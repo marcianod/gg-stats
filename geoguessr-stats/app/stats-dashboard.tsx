@@ -83,7 +83,7 @@ function CountryStatsTable({ stats, onCountrySelect, selectedCountry }: { stats:
     );
 }
 
-export default function StatsDashboard({ allDuels }: { allDuels: Duel[] }) {
+export default function StatsDashboard({ allDuels, geoJson }: { allDuels: Duel[], geoJson: any }) {
   const [activeTab, setActiveTab] = useState('matches');
   const [selectedDuel, setSelectedDuel] = useState<ProcessedDuel | null>(null)
   const [selectedCountry, setSelectedCountry] = useState<CountryData | null>(null);
@@ -103,6 +103,13 @@ export default function StatsDashboard({ allDuels }: { allDuels: Duel[] }) {
     setSelectedDuel(duel);
     setSelectedRoundData(null);
   }
+
+  const handleCountrySelect = (countryCode: string) => {
+    const country = countryStats.find(c => c.countryCode === countryCode);
+    if (country) {
+        setSelectedCountry(country);
+    }
+  };
 
   const processedDuels = useMemo(() => {
     return allDuels
@@ -284,7 +291,7 @@ export default function StatsDashboard({ allDuels }: { allDuels: Duel[] }) {
                 {selectedDuel ? (
                 <div className="flex flex-col h-[75vh]">
                     <div className="h-96 w-full">
-                        <Map roundData={selectedRoundData} />
+                        <Map activeTab={activeTab} roundData={selectedRoundData} geoJson={geoJson} countryStats={countryStats} selectedCountry={selectedCountry} onCountrySelect={handleCountrySelect} />
                     </div>
                     <div className="flex-grow overflow-y-auto">
                         <p>Final Score: {selectedDuel.myScore} - {selectedDuel.opponentScore}</p>
@@ -301,7 +308,7 @@ export default function StatsDashboard({ allDuels }: { allDuels: Duel[] }) {
             </Card>
         )}
         {activeTab === 'countries' && (
-            <Card>
+            <Card className="min-h-[80vh]">
             <CardHeader>
                 <CardTitle>Country Details</CardTitle>
                 <CardDescription>
@@ -310,18 +317,29 @@ export default function StatsDashboard({ allDuels }: { allDuels: Duel[] }) {
                     : 'Select a country to see details.'}
                 </CardDescription>
             </CardHeader>
-            <CardContent>
-                {selectedCountry ? (
-                <div>
-                    <p>Win Rate: {((selectedCountry.wins / selectedCountry.totalRounds) * 100).toFixed(1)}%</p>
-                    <p>Avg. Score Δ: {(selectedCountry.totalScoreDelta / selectedCountry.totalRounds).toFixed(0)}</p>
-                    <p>Total Rounds: {selectedCountry.totalRounds}</p>
+            <CardContent className="flex flex-col h-[75vh]">
+                <div className="h-96 w-full">
+                    <Map 
+                        activeTab={activeTab} 
+                        roundData={null} 
+                        geoJson={geoJson} 
+                        countryStats={countryStats} 
+                        selectedCountry={selectedCountry} 
+                        onCountrySelect={handleCountrySelect} />
                 </div>
-                ) : (
-                <p className="text-sm text-muted-foreground">
-                    Details will appear here.
-                </p>
-                )}
+                <div className="flex-grow overflow-y-auto">
+                    {selectedCountry ? (
+                    <div>
+                        <p>Win Rate: {((selectedCountry.wins / selectedCountry.totalRounds) * 100).toFixed(1)}%</p>
+                        <p>Avg. Score Δ: {(selectedCountry.totalScoreDelta / selectedCountry.totalRounds).toFixed(0)}</p>
+                        <p>Total Rounds: {selectedCountry.totalRounds}</p>
+                    </div>
+                    ) : (
+                    <p className="text-sm text-muted-foreground">
+                        Details will appear here.
+                    </p>
+                    )}
+                </div>
             </CardContent>
             </Card>
         )}

@@ -4,6 +4,7 @@ import StatsDashboard from './stats-dashboard'
 import { type Duel } from '../lib/types'
 
 const STATS_FILE_PATH = path.join(process.cwd(), 'data', 'geoguessr_stats.json');
+const GEOJSON_FILE_PATH = path.join(process.cwd(), 'data', 'countries.geojson');
 
 /**
  * Reads and parses the stats file on the server.
@@ -32,9 +33,20 @@ async function getStats(): Promise<Duel[]> {
   }
 }
 
+async function getGeoJson(): Promise<any> {
+  try {
+    const fileContent = await fs.readFile(GEOJSON_FILE_PATH, 'utf-8');
+    return JSON.parse(fileContent);
+  } catch (error) {
+    console.error('Error reading geojson file for page:', error);
+    return null;
+  }
+}
+
 export default async function HomePage() {
   // As a Server Component, we can directly read from the filesystem.
   const allDuels = await getStats()
+  const geoJson = await getGeoJson();
   
   // Sorting is now handled client-side in `stats-dashboard.tsx`
   // to ensure dates are derived correctly from round data.
@@ -45,7 +57,7 @@ export default async function HomePage() {
         <h1 className="text-2xl font-bold">GeoGuessr Stats Dashboard</h1>
       </header>
       <main>
-        <StatsDashboard allDuels={allDuels} />
+        <StatsDashboard allDuels={allDuels} geoJson={geoJson} />
       </main>
     </div>
   );

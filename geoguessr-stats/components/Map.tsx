@@ -1,9 +1,10 @@
 'use client'
 
 import 'leaflet/dist/leaflet.css'
-import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Polyline, useMap, GeoJSON } from 'react-leaflet'
 import L from 'leaflet'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
+import { RoundData, CountryData } from '../lib/types'
 
 // Custom icon definitions
 const createPlayerIcon = (color: string) => new L.DivIcon({
@@ -26,15 +27,63 @@ const myIcon = createPlayerIcon('#0d6efd');
 const oppIcon = createPlayerIcon('#dc3545');
 
 interface MapProps {
-  roundData: {
-    actual: { lat: number; lng: number };
-    myGuess: { lat: number; lng: number };
-    opponentGuess: { lat: number; lng: number };
-  } | null;
+  activeTab: string;
+  roundData: RoundData | null;
+  geoJson: any;
+  countryStats: CountryData[];
+  selectedCountry: CountryData | null;
+  onCountrySelect: (countryCode: string) => void;
 }
 
-function MapBounds({ roundData }: MapProps) {
+function getColorForWinRate(winRate: number | undefined): string {
+    if (winRate === undefined) return '#e9ecef';
+    if (winRate > 70) return '#1a9641';
+    if (winRate > 60) return '#a6d96a';
+    if (winRate > 50) return '#ffffbf';
+    if (winRate > 40) return '#fdae61';
+    return '#d7191c';
+}
+
+function ChoroplethLayer({ geoJson, countryStats, onCountrySelect, selectedCountry }: MapProps) {
+    const geoJsonLayer = useRef<L.GeoJSON | null>(null);
+
+    const style = (feature: any) => {
+        const countryCode = feature.properties['ISO3166-1-Alpha-2'];
+        const stats = countryStats.find(c => c.countryCode === countryCode);
+        const winRate = stats ? (stats.wins / stats.totalRounds) * 100 : undefined;
+        return {
+            fillColor: getColorForWinRate(winRate),
+            weight: 1,
+            opacity: 1,
+            color: 'white',
+            fillOpacity: 0.7
+        };
+    };
+
+    const onEachFeature = (feature: any, layer: L.Layer) => {
+        const countryCode = feature.properties['ISO3166-1-Alpha-2'];
+        layer.on({
+            click: () => onCountrySelect(countryCode)
+        });
+    };
+
+    useEffect(() => {
+        if (geoJsonLayer.current && selectedCountry) {
+            const countryLayer = Object.values(geoJsonLayer.current.getLayers()).find((layer: any) => {
+                return layer.feature.properties['ISO3166-1-Alpha-2'] === selectedCountry.countryCode;
+            });
+            if (countryLayer) {
+                (countryLayer as L.Path).bringToFront();
+            }
+        }
+    }, [selectedCountry]);
+
+    return <GeoJSON ref={geoJsonLayer} data={geoJson} style={style} onEachFeature={onEachFeature} />;
+}
+
+function MapBounds({ roundData, selectedCountry, geoJson }: { roundData: RoundData | null, selectedCountry: CountryData | null, geoJson: any }) {
   const map = useMap();
+
   useEffect(() => {
     if (roundData) {
       const bounds = L.latLngBounds([
@@ -43,30 +92,44 @@ function MapBounds({ roundData }: MapProps) {
         roundData.opponentGuess,
       ]);
       map.fitBounds(bounds.pad(0.2));
-    } else {
-      map.setView([20, 0], 2);
     }
   }, [map, roundData]);
+
+  useEffect(() => {
+    if (selectedCountry && geoJson) {
+        const countryFeature = geoJson.features.find((feature: any) => feature.properties['ISO3166-1-Alpha-2'] === selectedCountry.countryCode);
+        if (countryFeature) {
+            const bounds = L.geoJSON(countryFeature).getBounds();
+            map.fitBounds(bounds);
+        }
+    } else if (!roundData) {
+        map.setView([20, 0], 2);
+    }
+  }, [map, selectedCountry, geoJson, roundData]);
+
   return null;
 }
 
-export default function Map({ roundData }: MapProps) {
+export default function Map(props: MapProps) {
   return (
     <MapContainer center={[20, 0]} zoom={2} style={{ height: '100%', width: '100%', borderRadius: '0.5rem' }}>
       <TileLayer
         url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
       />
-      {roundData && (
+      {props.activeTab === 'matches' && props.roundData && (
         <>
-          <Marker position={roundData.actual} icon={correctLocationIcon} />
-          <Marker position={roundData.myGuess} icon={myIcon} />
-          <Marker position={roundData.opponentGuess} icon={oppIcon} />
-          <Polyline positions={[roundData.myGuess, roundData.actual]} color="#0d6efd" dashArray="5, 5" />
-          <Polyline positions={[roundData.opponentGuess, roundData.actual]} color="#dc3545" dashArray="5, 5" />
+          <Marker position={props.roundData.actual} icon={correctLocationIcon} />
+          <Marker position={props.roundData.myGuess} icon={myIcon} />
+          <Marker position={props.roundData.opponentGuess} icon={oppIcon} />
+          <Polyline positions={[props.roundData.myGuess, props.roundData.actual]} color="#0d6efd" dashArray="5, 5" />
+          <Polyline positions={[props.roundData.opponentGuess, props.roundData.actual]} color="#dc3545" dashArray="5, 5" />
         </>
       )}
-      <MapBounds roundData={roundData} />
+      {props.activeTab === 'countries' && props.geoJson && (
+          <ChoroplethLayer {...props} />
+      )}
+      <MapBounds roundData={props.roundData} selectedCountry={props.selectedCountry} geoJson={props.geoJson} />
     </MapContainer>
   )
 }
