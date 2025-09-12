@@ -387,7 +387,7 @@ export default function StatsDashboard() {
             </CardHeader>
             <CardContent>
                 <div className="flex flex-col h-[75vh]">
-                    <div className="w-full" style={{ height: '24rem' }}>
+                    <div className="w-full h-96">
                                                 {/* 
                             The Map component should ideally allow clicking on a country to select it.
                             If it does, it should call the `onCountrySelect` prop with the selected country's data.
@@ -420,7 +420,7 @@ export default function StatsDashboard() {
                 </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col h-[75vh]">
-                <div className="w-full" style={{ height: '24rem' }}>
+                <div className="w-full h-96">
                                         {/* 
                         The Map component should ideally allow clicking on a country to select it.
                         If it does, it should call the `onCountrySelect` prop with the selected country's data.
