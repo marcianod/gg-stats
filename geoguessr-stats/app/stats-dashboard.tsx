@@ -386,9 +386,8 @@ export default function StatsDashboard() {
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                {selectedDuel ? (
                 <div className="flex flex-col h-[75vh]">
-                    <div className="h-96 w-full">
+                    <div className="w-full" style={{ height: '24rem' }}>
                                                 {/* 
                             The Map component should ideally allow clicking on a country to select it.
                             If it does, it should call the `onCountrySelect` prop with the selected country's data.
@@ -396,16 +395,17 @@ export default function StatsDashboard() {
                         <Map activeTab={activeTab} roundData={selectedRoundData} geoJson={geoJsonData} countryStats={countryStats} selectedCountry={selectedCountry} onCountrySelect={handleCountrySelect} />
                     </div>
                     <div className="flex-grow overflow-y-auto">
-                        <p>Final Score: {selectedDuel.myScore} - {selectedDuel.opponentScore}</p>
-                        <p>Result: {selectedDuel.outcome}</p>
-                        <MatchRoundsTable rounds={selectedDuel.rounds} onRoundSelect={setSelectedRoundData} selectedRound={selectedRoundData} />
+                        {selectedDuel ? (
+                          <>
+                            <p>Final Score: {selectedDuel.myScore} - {selectedDuel.opponentScore}</p>
+                            <p>Result: {selectedDuel.outcome}</p>
+                            <MatchRoundsTable rounds={selectedDuel.rounds} onRoundSelect={setSelectedRoundData} selectedRound={selectedRoundData} />
+                          </>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">Details will appear here.</p>
+                        )}
                     </div>
                 </div>
-                ) : (
-                <p className="text-sm text-muted-foreground">
-                    Details will appear here.
-                </p>
-                )}
             </CardContent>
             </Card>
         )}
@@ -420,7 +420,7 @@ export default function StatsDashboard() {
                 </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col h-[75vh]">
-                <div className="h-96 w-full">
+                <div className="w-full" style={{ height: '24rem' }}>
                                         {/* 
                         The Map component should ideally allow clicking on a country to select it.
                         If it does, it should call the `onCountrySelect` prop with the selected country's data.
