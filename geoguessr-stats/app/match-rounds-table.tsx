@@ -52,7 +52,7 @@ export function MatchRoundsTable({ rounds, onRoundSelect, selectedRound }: Match
       </CardHeader>
       <CardContent>
         <Table>
-          <TableHeader className="sticky top-0 bg-white z-10">
+          <TableHeader className="sticky top-0 z-10">
             <TableRow>
               <TableHead className="w-[80px]">Round #</TableHead>
               <TableHead>Country</TableHead>
