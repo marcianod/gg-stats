@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   Table,
   TableBody,
@@ -5,10 +6,12 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableFooter
 } from '@/components/ui/table'
 import { type RoundData } from '../lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button';
 
 interface MatchRoundsTableProps {
   rounds: RoundData[]; // Changed from duel: ProcessedDuel;
@@ -16,10 +19,13 @@ interface MatchRoundsTableProps {
   selectedRound: RoundData | null;
 }
 
+const INITIAL_VISIBLE_ROUNDS = 5;
+
 /**
  * Displays a table with a round-by-round breakdown of a duel.
  */
 export function MatchRoundsTable({ rounds, onRoundSelect, selectedRound }: MatchRoundsTableProps) {
+  const [visibleRounds, setVisibleRounds] = useState(INITIAL_VISIBLE_ROUNDS);
   
   const roundDetails = rounds.map((round) => { // Iterate directly over rounds
     return {
@@ -34,6 +40,10 @@ export function MatchRoundsTable({ rounds, onRoundSelect, selectedRound }: Match
       roundData: round, // Pass the whole RoundData object
     }
   })
+
+  const handleShowMore = () => {
+    setVisibleRounds(prev => prev + 5);
+  };
 
   return (
     <Card className="mt-6">
@@ -53,9 +63,9 @@ export function MatchRoundsTable({ rounds, onRoundSelect, selectedRound }: Match
             </TableRow>
           </TableHeader>
           <TableBody>
-            {roundDetails?.map(detail => (
+            {roundDetails?.slice(0, visibleRounds).map(detail => (
               <TableRow 
-                key={detail.roundNumber}
+                key={`${detail.roundData.duelId}-${detail.roundNumber}`}
                 onClick={() => detail.roundData && onRoundSelect(detail.roundData)}
                 className={cn(
                     detail.roundData && 'cursor-pointer',
@@ -70,6 +80,15 @@ export function MatchRoundsTable({ rounds, onRoundSelect, selectedRound }: Match
               </TableRow>
             ))}
           </TableBody>
+          {rounds.length > visibleRounds && (
+            <TableFooter>
+              <TableRow>
+                <TableCell colSpan={6} className="text-center">
+                  <Button onClick={handleShowMore}>Show More</Button>
+                </TableCell>
+              </TableRow>
+            </TableFooter>
+          )}
         </Table>
       </CardContent>
     </Card>

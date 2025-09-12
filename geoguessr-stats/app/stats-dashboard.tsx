@@ -386,7 +386,7 @@ export default function StatsDashboard() {
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="flex flex-col h-[75vh]">
+                <div className="flex flex-col">
                     <div className="w-full h-96">
                                                 {/* 
                             The Map component should ideally allow clicking on a country to select it.
@@ -394,7 +394,7 @@ export default function StatsDashboard() {
                         */}
                         <Map activeTab={activeTab} roundData={selectedRoundData} geoJson={geoJsonData} countryStats={countryStats} selectedCountry={selectedCountry} onCountrySelect={handleCountrySelect} />
                     </div>
-                    <div className="flex-grow overflow-y-auto">
+                    <div className="flex-grow overflow-y-auto" style={{ height: 'calc(100vh - 400px)' }}>
                         {selectedDuel ? (
                           <>
                             <p>Final Score: {selectedDuel.myScore} - {selectedDuel.opponentScore}</p>
@@ -419,7 +419,7 @@ export default function StatsDashboard() {
                     : 'Select a country to see details.'}
                 </CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-col h-[75vh]">
+            <CardContent className="flex flex-col">
                 <div className="w-full h-96">
                                         {/* 
                         The Map component should ideally allow clicking on a country to select it.
@@ -433,7 +433,7 @@ export default function StatsDashboard() {
             selectedCountry={selectedCountry} 
             onCountrySelect={handleCountrySelect} />
                 </div>
-                <div className="flex-grow overflow-y-auto">
+                <div className="flex-grow overflow-y-auto" style={{ height: 'calc(100vh - 400px)' }}>
           {selectedCountry ? (
           <div>
             {selectedCountryRounds && selectedCountryRounds.length > 0 ? (
