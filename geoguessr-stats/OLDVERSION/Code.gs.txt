@@ -1,0 +1,220 @@
+// =================================================================
+// === CONFIGURATION ===============================================
+// =================================================================
+const FOLDER_NAME = 'GeoGuessr Stats';
+const FILENAME = 'geoguessr_stats.json';
+const META_FILENAME = 'geoguessr_sync_meta.json';
+const GEOJSON_FILENAME = 'countries.geojson';
+// =================================================================
+
+// Helper function to find or create the designated project folder.
+function getOrCreateProjectFolder() {
+  const folders = DriveApp.getFoldersByName(FOLDER_NAME);
+  if (folders.hasNext()) {
+    return folders.next(); // Folder exists, return it
+  }
+  // Folder does not exist, create it and return it
+  return DriveApp.createFolder(FOLDER_NAME);
+}
+
+// Helper function to robustly parse a string and flatten the result.
+function robustJsonParseAndFlatten(jsonString) {
+    if (!jsonString || jsonString.trim() === '') {
+        return [];
+    }
+    try {
+        const data = JSON.parse(jsonString);
+        if (Array.isArray(data)) {
+            return data.flat(Infinity);
+        }
+    } catch (e) {
+        console.warn("JSON parsing failed. Raw content may have been corrupted.", e);
+    }
+    return [];
+}
+
+// =================================================================
+// === ONE-TIME UTILITIES ==========================================
+// =================================================================
+function manuallyCleanDuplicates() {
+  try {
+    const folder = getOrCreateProjectFolder();
+    const files = folder.getFilesByName(FILENAME);
+    if (!files.hasNext()) {
+      return console.log(`File "${FILENAME}" not found in folder "${FOLDER_NAME}".`);
+    }
+    const file = files.next();
+    const content = file.getBlob().getDataAsString();
+    let duels = robustJsonParseAndFlatten(content);
+
+    const seenGameIds = new Set();
+    const uniqueDuels = duels.filter(duel => {
+      if (duel && duel.gameId && !seenGameIds.has(duel.gameId)) {
+        seenGameIds.add(duel.gameId);
+        return true;
+      }
+      return false;
+    });
+    
+    uniqueDuels.sort((a, b) => new Date(b.created || b.startTime || 0) - new Date(a.created || a.startTime || 0));
+    file.setContent(JSON.stringify(uniqueDuels, null, 2));
+    console.log(`Cleanup complete! File now contains ${uniqueDuels.length} unique duels.`);
+  } catch (e) {
+    console.error('Error during cleanup:', e);
+  }
+}
+
+function createMetaFileManually() {
+    try {
+        const folder = getOrCreateProjectFolder();
+        const files = folder.getFilesByName(FILENAME);
+        if (!files.hasNext()) {
+            return console.log(`Stats file not found. Cannot determine last sync time.`);
+        }
+        const statsFile = files.next();
+        const duels = robustJsonParseAndFlatten(statsFile.getBlob().getDataAsString());
+
+        if (duels.length === 0) {
+            return console.log("Stats file is empty. Meta file not created.");
+        }
+        
+        duels.sort((a, b) => {
+            const dateA = new Date(a.created || a.startTime || a.rounds?.[0]?.startTime || 0).getTime();
+            const dateB = new Date(b.created || b.startTime || b.rounds?.[0]?.startTime || 0).getTime();
+            return dateB - dateA;
+        });
+
+        const newestDuel = duels[0];
+        const lastSyncTimestamp = new Date(newestDuel.created || newestDuel.startTime || newestDuel.rounds[0].startTime).getTime();
+
+        if (isNaN(lastSyncTimestamp)) {
+            return console.error("Could not determine a valid date from the newest duel.");
+        }
+
+        const metaFileContent = JSON.stringify({ lastSyncTimestamp });
+        const metaFiles = folder.getFilesByName(META_FILENAME);
+        const metaFile = metaFiles.hasNext() ? metaFiles.next() : folder.createFile(META_FILENAME, metaFileContent);
+        metaFile.setContent(metaFileContent);
+
+        console.log(`Successfully created/updated meta file with timestamp: ${new Date(lastSyncTimestamp).toLocaleString()}`);
+    } catch (e) {
+        console.error('Error creating meta file:', e);
+    }
+}
+// =================================================================
+// === CORE WEB APP FUNCTIONS ======================================
+// =================================================================
+function doGet(e) {
+  // If the request is for sync info, handle it and exit.
+  if (e && e.parameter && e.parameter.action === 'getSyncInfo') {
+    return getSyncInfo();
+  }
+  
+  // Otherwise, serve the main HTML page.
+  const template = HtmlService.createTemplateFromFile('Index');
+  template.dataFromServer = getStoredStatsAsString();
+  template.geoJsonData = getGeoJsonAsString();
+  template.timestamp = new Date().getTime();
+  
+  return template.evaluate()
+    .setTitle('GeoGuessr Duel Stats')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+function doPost(e) {
+  try {
+    const payload = JSON.parse(e.postData.contents);
+
+    // Route POST requests based on an 'action' property
+    if (payload.action === 'getSyncInfo') {
+      return getSyncInfo();
+    }
+    
+    // Default action is to add duels
+    return addDuels(payload);
+
+  } catch (err) {
+    console.error('doPost Error:', err, 'Raw content:', e.postData.contents);
+    return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: 'Invalid request format.' }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// =================================================================
+// === DATA HANDLING LOGIC =========================================
+// =================================================================
+function getSyncInfo() {
+  try {
+    const folder = getOrCreateProjectFolder();
+    const files = folder.getFilesByName(META_FILENAME);
+    if (files.hasNext()) {
+      const content = files.next().getBlob().getDataAsString();
+      return ContentService.createTextOutput(content).setMimeType(ContentService.MimeType.JSON);
+    }
+    // If no meta file, signal to the client to do a full sync
+    return ContentService.createTextOutput(JSON.stringify({ lastSyncTimestamp: 0 })).setMimeType(ContentService.MimeType.JSON);
+  } catch (e) {
+    return ContentService.createTextOutput(JSON.stringify({ error: e.message, lastSyncTimestamp: 0 })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function addDuels(newDuels) {
+    if (!Array.isArray(newDuels) || newDuels.length === 0) {
+        return ContentService.createTextOutput(JSON.stringify({ status: 'success', addedCount: 0 })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    const folder = getOrCreateProjectFolder();
+    const files = folder.getFilesByName(FILENAME);
+    const targetFile = files.hasNext() ? files.next() : folder.createFile(FILENAME, '[]', 'application/json');
+
+    const currentDuels = robustJsonParseAndFlatten(targetFile.getBlob().getDataAsString());
+    const seenGameIds = new Set(currentDuels.map(d => d.gameId));
+
+    let addedCount = 0;
+    newDuels.forEach(duel => {
+        if (duel && duel.gameId && !seenGameIds.has(duel.gameId)) {
+            currentDuels.push(duel);
+            seenGameIds.add(duel.gameId);
+            addedCount++;
+        }
+    });
+
+    currentDuels.sort((a, b) => new Date(b.created || b.startTime || 0) - new Date(a.created || a.startTime || 0));
+    targetFile.setContent(JSON.stringify(currentDuels, null, 2));
+    
+    // After adding, update the meta file
+    createMetaFileManually();
+
+    return ContentService.createTextOutput(JSON.stringify({ status: 'success', addedCount: addedCount }))
+        .setMimeType(ContentService.MimeType.JSON);
+}
+
+function getStoredStatsAsString() {
+  try {
+    const folder = getOrCreateProjectFolder();
+    const files = folder.getFilesByName(FILENAME);
+    if (files.hasNext()) {
+        const file = files.next();
+        const content = file.getBlob().getDataAsString();
+        const metadata = { fileId: file.getId(), lastUpdated: file.getLastUpdated().toISOString() };
+        return JSON.stringify({ data: JSON.parse(content || '[]'), metadata: metadata });
+    }
+    return JSON.stringify({ data: [], metadata: { message: 'No file found' } });
+  } catch(e) {
+    return JSON.stringify({ error: e.message, data: [] });
+  }
+}
+
+function getGeoJsonAsString() {
+  try {
+    const folder = getOrCreateProjectFolder();
+    const files = folder.getFilesByName(GEOJSON_FILENAME);
+    if (files.hasNext()) {
+      return files.next().getBlob().getDataAsString();
+    }
+    return JSON.stringify({ error: `File not found: ${GEOJSON_FILENAME}` });
+  } catch(e) {
+    return JSON.stringify({ error: e.message });
+  }
+}
