@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import { useMemo, useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
@@ -29,7 +29,7 @@ const Map = dynamic(() => import('../components/Map'), {
 // This should ideally be configurable by the user or from environment variables.
 const MY_PLAYER_ID = '608a7f9394d95300015224ac'
 
-function CountryStatsTable({ stats, onCountrySelect, selectedCountry }: { stats: CountryData[], onCountrySelect: (country: CountryData) => void, selectedCountry: CountryData | null }) {
+function CountryStatsTable({ stats, onCountrySelect, selectedCountry }: { stats: CountryData[], onCountrySelect: (countryCode: string) => void, selectedCountry: CountryData | null }) {
     return (
         <Card>
             <CardHeader className="px-7">
@@ -52,7 +52,7 @@ function CountryStatsTable({ stats, onCountrySelect, selectedCountry }: { stats:
                         {stats.map((stat) => (
                             <TableRow 
                                 key={stat.countryCode} 
-                                onClick={() => onCountrySelect(stat)}
+                                onClick={() => onCountrySelect(stat.countryCode)}
                                 className={cn(
                                     'cursor-pointer',
                                     selectedCountry?.countryCode === stat.countryCode && 'bg-accent'
@@ -134,9 +134,10 @@ export default function StatsDashboard() {
     setSelectedCountry(null); // Reset selected country when a duel is selected
   }
 
-  const handleCountrySelect = (country: CountryData) => {
+  const handleCountrySelect = (countryCode: string) => {
+    const country = countryStats.find(c => c.countryCode === countryCode) || null;
     setSelectedCountry(country);
-    setSelectedCountryRounds(country.rounds);
+    setSelectedCountryRounds(country?.rounds || null);
   };
 
   const processedDuels = useMemo(() => {
@@ -279,8 +280,8 @@ export default function StatsDashboard() {
             }
 
             // Add the round data to the country stats
-            stats[countryCode].rounds.push({
-                actual: { lat: round.panorama?.lat || 0, lng: round.panorama?.lng || 0, heading: round.panorama?.heading, pitch: round.panorama?.pitch, zoom: round.panorama?.zoom },
+            stats[countryCode].rounds.push({ // The round object already contains all necessary data
+                actual: { lat: round.actual.lat || 0, lng: round.actual.lng || 0, heading: round.actual.heading, pitch: round.actual.pitch, zoom: round.actual.zoom },
                 myGuess: { lat: myGuess.lat || 0, lng: myGuess.lng || 0, score: myGuess.score || 0, distance: myGuess.distance || 0, time: myGuess.time || 0 },
                 opponentGuess: { lat: opponentGuess.lat || 0, lng: opponentGuess.lng || 0, score: opponentGuess.score || 0, distance: opponentGuess.distance || 0, time: opponentGuess.time || 0 },
                 roundNumber: round.roundNumber,
@@ -288,7 +289,7 @@ export default function StatsDashboard() {
                 duelId: duel.gameId,
                 myPlayerId: myPlayer.playerId,
                 opponentPlayerId: opponentPlayer.playerId,
-                date: new Date(round.startTime),
+                date: new Date(round.date),
                 won: (myGuess.score || 0) > (opponentGuess.score || 0),
                 scoreDelta: scoreDelta,
                 distDelta: (myGuess.distance || 0) - (opponentGuess.distance || 0),
@@ -388,12 +389,12 @@ export default function StatsDashboard() {
                             The Map component should ideally allow clicking on a country to select it.
                             If it does, it should call the `onCountrySelect` prop with the selected country's data.
                         */}
-                        <Map activeTab={activeTab} roundData={selectedRoundData} geoJson={geoJsonData} countryStats={countryStats} selectedCountry={selectedCountry} onCountrySelect={handleCountrySelect} />
+                        <Map activeTab={activeTab} roundData={selectedRoundData} geoJson={geoJsonData} countryStats={countryStats} selectedCountry={selectedCountry?.countryCode} onCountrySelect={handleCountrySelect} />
                     </div>
                     <div className="flex-grow overflow-y-auto">
                         <p>Final Score: {selectedDuel.myScore} - {selectedDuel.opponentScore}</p>
                         <p>Result: {selectedDuel.outcome}</p>
-                        <MatchRoundsTable duel={selectedDuel} onRoundSelect={setSelectedRoundData} selectedRound={selectedRoundData} />
+                        <MatchRoundsTable rounds={selectedDuel.rounds} onRoundSelect={setSelectedRoundData} selectedRound={selectedRoundData} />
                     </div>
                 </div>
                 ) : (
@@ -425,7 +426,7 @@ export default function StatsDashboard() {
                         roundData={null} 
                         geoJson={geoJsonData} 
                         countryStats={countryStats} 
-                        selectedCountry={selectedCountry} 
+                        selectedCountry={selectedCountry?.countryCode} 
                         onCountrySelect={handleCountrySelect} />
                 </div>
                 <div className="flex-grow overflow-y-auto">
