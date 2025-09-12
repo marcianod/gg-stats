@@ -29,7 +29,7 @@ const Map = dynamic(() => import('../components/Map'), {
 // This should ideally be configurable by the user or from environment variables.
 const MY_PLAYER_ID = '608a7f9394d95300015224ac'
 
-function CountryStatsTable({ stats, onCountrySelect, selectedCountry }: { stats: CountryData[], onCountrySelect: (country: CountryData) => void, selectedCountry: CountryData | null }) {
+function CountryStatsTable({ stats, onCountrySelect, selectedCountry }: { stats: CountryData[], onCountrySelect: (countryCode: string) => void, selectedCountry: CountryData | null }) {
     return (
         <Card>
             <CardHeader className="px-7">
@@ -49,10 +49,10 @@ function CountryStatsTable({ stats, onCountrySelect, selectedCountry }: { stats:
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {stats.map((stat) => (
-                            <TableRow 
-                                key={stat.countryCode} 
-                                onClick={() => onCountrySelect(stat)}
+            {stats.map((stat) => (
+              <TableRow 
+                key={stat.countryCode} 
+                onClick={() => onCountrySelect(stat.countryCode)}
                                 className={cn(
                                     'cursor-pointer',
                                     selectedCountry?.countryCode === stat.countryCode && 'bg-accent'
@@ -320,6 +320,7 @@ export default function StatsDashboard() {
   }
 
   return (
+    <>
     <div className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8 lg:grid-cols-3 xl:grid-cols-3">
       <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-1">
         <Tabs defaultValue="matches" onValueChange={handleTabChange}>
@@ -365,8 +366,8 @@ export default function StatsDashboard() {
               </CardContent>
             </Card>
           </TabsContent>
-           <TabsContent value="countries">
-            <CountryStatsTable stats={countryStats} onCountrySelect={setSelectedCountry} selectedCountry={selectedCountry} />
+          <TabsContent value="countries">
+            <CountryStatsTable stats={countryStats} onCountrySelect={handleCountrySelect} selectedCountry={selectedCountry} />
           </TabsContent>
         </Tabs>
       </div>
@@ -450,15 +451,15 @@ export default function StatsDashboard() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {selectedCountryRounds.map((round, index) => (
-                                            <TableRow key={index}>
-                                                <TableCell>{round.roundNumber}</TableCell>
-                                                <TableCell>{round.myGuess.score}</TableCell>
-                                                <TableCell>{round.opponentGuess.score}</TableCell>
-                                                <TableCell>{round.scoreDelta}</TableCell>
-                                                <TableCell>{round.date.toLocaleDateString()}</TableCell>
-                                            </TableRow>
-                                        ))}
+                                    {selectedCountryRounds.map((round, index) => (
+                                      <TableRow key={index} onClick={() => setSelectedRoundData(round)} className={cn('cursor-pointer', selectedRoundData?.duelId === round.duelId && selectedRoundData?.roundNumber === round.roundNumber && 'bg-accent')}>
+                                        <TableCell>{round.roundNumber}</TableCell>
+                                        <TableCell>{round.myGuess.score}</TableCell>
+                                        <TableCell>{round.opponentGuess.score}</TableCell>
+                                        <TableCell>{round.scoreDelta}</TableCell>
+                                        <TableCell>{round.date.toLocaleDateString()}</TableCell>
+                                      </TableRow>
+                                    ))}
                                     </TableBody>
                                 </Table>
                             </div>
@@ -475,5 +476,38 @@ export default function StatsDashboard() {
         )}
       </div>
     </div>
+    {selectedRoundData && <RoundModal round={selectedRoundData} onClose={() => setSelectedRoundData(null)} />}
+    </>
   )
 }
+
+// Attach modal renderer to the default export component by adding it to the module's top-level render
+// (we can't render from inside the function after return without refactor, so consumers import this file's default
+// export which controls state and modal rendering via _RoundModalRenderer below)
+
+    function RoundModal({ round, onClose }: { round: RoundData; onClose: () => void }) {
+      if (!round) return null;
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+          <div className="relative z-10 w-full max-w-4xl bg-white rounded shadow-lg p-4">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <h3 className="font-semibold">Round {round.roundNumber} — {round.countryCode?.toUpperCase()}</h3>
+                <p className="text-sm text-muted-foreground">{round.date.toLocaleString()}</p>
+              </div>
+              <button className="text-red-500" onClick={onClose}>Close</button>
+            </div>
+            <div className="h-96 w-full">
+              <Map activeTab="matches" roundData={round} geoJson={null} countryStats={[]} selectedCountry={null} onCountrySelect={() => {}} />
+            </div>
+            <div className="mt-3">
+              <MatchRoundsTable rounds={[round]} onRoundSelect={() => {}} selectedRound={null} />
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+// Render modal when a round is selected
+// (modal renderer removed)
