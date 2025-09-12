@@ -2,20 +2,27 @@
 
 ## Current Work Focus
 
--   **Task:** Initialize the Memory Bank.
--   **Status:** In progress. The core files are being created and populated with initial content based on an analysis of the project.
+-   **Task:** Implement a dynamic query builder for filtering stats.
+-   **Status:** Planning phase. The feature has been defined and is ready for implementation.
 
 ## Recent Changes
 
--   Created `projectbrief.md` to define the project's core goals.
--   Created `productContext.md` to outline the problem the application solves.
--   Created `techContext.md` by analyzing `package.json` to document the technology stack.
--   Created `systemPatterns.md` by analyzing the file structure to document the architecture.
+-   Refactored all tables to use a generic `SortableTable` component, ensuring consistent styling and behavior.
+-   Corrected layout issues to ensure all panels are dynamically sized and scrollable.
 
 ## Next Steps
 
--   Create `progress.md` to complete the initial set of Memory Bank files.
--   Begin using the Memory Bank to inform future development tasks.
+-   **Implement the Query Builder UI:**
+    -   Create an "+ Add Filter" button.
+    -   Develop a dropdown or similar mechanism for selecting data fields (e.g., "Map," "Opponent MMR," "Win/Loss," "Country").
+    -   Implement a way to define conditions (e.g., "is," "is not," "is greater than").
+    -   Provide an input for the filter value.
+-   **Develop the Filtering Logic:**
+    -   Implement the logic to apply the selected filters to the dataset.
+    -   Allow for chaining multiple filters with AND/OR conditions.
+-   **Update the Dashboard:**
+    -   Integrate the query builder into the main dashboard view.
+    -   Ensure the tables and map update dynamically based on the active filters.
 
 ## Important Patterns and Preferences
 

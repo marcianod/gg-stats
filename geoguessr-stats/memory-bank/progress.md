@@ -2,23 +2,23 @@
 
 ## What Works
 
--   The basic Next.js application structure is in place.
--   The core UI components from `shadcn/ui` are set up and ready to be used.
--   The application is capable of running in a development environment (`npm run dev`).
--   A data structure for GeoGuessr stats is defined and a sample data file (`geoguessr_stats.json`) exists.
+-   The application now has a fully functional stats dashboard that displays recent matches, country-specific stats, and match details.
+-   All tables in the dashboard are sortable and feature sticky headers with scrollable bodies.
+-   The layout is responsive and dynamically adjusts to the browser's viewport height.
+-   A generic `SortableTable` component has been created, promoting code reuse and consistency.
+-   The Memory Bank is established and actively being used to guide development.
 
 ## What's Left to Build
 
--   **Data Loading Logic:** Implement the logic to read and parse the `geoguessr_stats.json` file.
--   **Stats Dashboard UI:** Build the main dashboard component to display the key statistics.
--   **Match History Table:** Create the table component to display a detailed history of matches and rounds.
--   **Map Visualization:** Implement the interactive map to show guess locations.
--   **Data Synchronization:** In the future, replace the static JSON file with a more dynamic data source, possibly a direct API integration with GeoGuessr.
+-   **Dynamic Query Builder:**
+    -   Implement a Jira-style query builder to allow for complex, user-defined filtering of the data.
+    -   Allow for chaining multiple filters with AND/OR logic.
+-   **Data Synchronization:**
+    -   In the future, replace the static JSON file with a more dynamic data source, possibly a direct API integration with GeoGuessr.
 
 ## Current Status
 
--   The project is in the early stages of development. The foundational structure is set up, but the main features have not yet been implemented.
--   The Memory Bank has just been initialized, which will provide a solid foundation for future development.
+-   The core viewing functionality of the application is complete. The focus has now shifted to enhancing the application's analytical capabilities with the implementation of the dynamic query builder.
 
 ## Known Issues
 

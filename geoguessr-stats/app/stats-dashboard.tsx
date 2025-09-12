@@ -14,6 +14,8 @@ import { type Duel, type ProcessedDuel, type RoundData, type GeoJson, type Count
 import { MatchRoundsTable } from './match-rounds-table'
 import { RecentMatchesTable } from './recent-matches-table'
 import { SortableTable, type ColumnDef } from '@/components/ui/sortable-table'
+import { QueryBuilder } from '@/components/ui/query-builder'
+import { applyFilters, type Filter } from '@/lib/filters'
 
 const Map = dynamic(() => import('../components/Map'), {
   ssr: false,
@@ -80,6 +82,7 @@ export default function StatsDashboard() {
   const [selectedCountry, setSelectedCountry] = useState<CountryData | null>(null);
   const [selectedRoundData, setSelectedRoundData] = useState<RoundData | null>(null);
   const [selectedCountryRounds, setSelectedCountryRounds] = useState<RoundData[] | null>(null);
+  const [filters, setFilters] = useState<Filter[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -226,6 +229,10 @@ export default function StatsDashboard() {
       .sort((a, b) => b.date.getTime() - a.date.getTime());
   }, [duels]);
 
+  const filteredDuels = useMemo(() => {
+    return applyFilters(processedDuels, filters);
+  }, [processedDuels, filters]);
+
   const countryStats: CountryData[] = useMemo(() => {
     const stats: Record<string, {
         wins: number;
@@ -325,6 +332,7 @@ export default function StatsDashboard() {
 
   return (
     <div className="flex h-screen flex-col gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
+      <QueryBuilder setFilters={setFilters} />
       <div className="grid flex-1 items-start gap-4 overflow-hidden lg:grid-cols-3 xl:grid-cols-3">
         <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-1 h-full">
           <Tabs defaultValue="matches" onValueChange={handleTabChange} className="flex flex-col h-full">
@@ -341,8 +349,8 @@ export default function StatsDashboard() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="flex-grow overflow-hidden p-0">
-                  {processedDuels.length > 0 ? (
-                    <RecentMatchesTable duels={processedDuels} onDuelSelect={handleDuelSelect} selectedDuel={selectedDuel} />
+                  {filteredDuels.length > 0 ? (
+                    <RecentMatchesTable duels={filteredDuels} onDuelSelect={handleDuelSelect} selectedDuel={selectedDuel} />
                   ) : (
                     <p className="py-8 text-center text-sm text-muted-foreground">
                       No duels found.

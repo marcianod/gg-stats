@@ -6,7 +6,9 @@ GeoGuessr players lack a centralized and user-friendly platform to track their g
 
 ## How It Works
 
-The application will sync with a user's GeoGuessr data (initially via a JSON file) and present it in an intuitive and interactive dashboard. Users can filter their stats, view round-by-round breakdowns of matches, and see their guess locations on a world map.
+The application will sync with a user's GeoGuessr data (initially via a JSON file) and present it in an intuitive and interactive dashboard. Users can view their stats in sortable tables and see their guess locations on a world map.
+
+A key feature is the dynamic query builder, which allows users to create complex filters to analyze their data. For example, a user could query for all losses on a specific map where their opponent's MMR was above a certain threshold. This elevates the application from a simple stat viewer to a powerful analysis tool.
 
 ## User Experience Goals
 
