@@ -312,7 +312,7 @@ export default function StatsDashboard() {
               <CardHeader className="px-7">
                 <CardTitle>Matches</CardTitle>
                 <CardDescription>
-                  A list of your recent GeoGuessr duels. ({processedDuels.length}{' '}
+                  A list of your recent GeoGuessr duels. ({processedDuels.length} 
                   games loaded)
                 </CardDescription>
               </CardHeader>
