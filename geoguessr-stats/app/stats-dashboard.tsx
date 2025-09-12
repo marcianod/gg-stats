@@ -11,6 +11,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import { type Duel, type ProcessedDuel } from '@/lib/types'
+import { MatchRoundsTable } from './match-rounds-table'
 
 // This should be configured by the user. I've taken it from your old project.
 const MY_PLAYER_ID = '608a7f9394d95300015224ac'
@@ -24,6 +25,15 @@ export default function StatsDashboard({ allDuels }: { allDuels: Duel[] }) {
         if (!duel.teams || duel.teams.length < 2 || !duel.rounds || duel.rounds.length === 0) {
           return null
         }
+
+        // Add an `isMe` flag to each player for easier identification later
+        const teamsWithIsMe = duel.teams.map(team => ({
+          ...team,
+          players: team.players.map(player => ({
+            ...player,
+            isMe: player.playerId === MY_PLAYER_ID,
+          })),
+        }));
 
         const meTeam = duel.teams.find(
           (t) => t.players[0]?.playerId === MY_PLAYER_ID
@@ -49,13 +59,15 @@ export default function StatsDashboard({ allDuels }: { allDuels: Duel[] }) {
         // The date is more reliable from the first round's startTime
         const gameDate = duel.rounds?.[0]?.startTime
 
-        return {
+        const processedDuel: ProcessedDuel = {
           ...duel,
+          teams: teamsWithIsMe, // Use the teams with the 'isMe' flag
           date: new Date(gameDate || 0),
           myScore, // This is already a number
           opponentScore,
           outcome: result, // Renamed 'result' to 'outcome' to match ProcessedDuel type
         }
+        return processedDuel;
       })
       .filter((d): d is ProcessedDuel => d !== null)
       .sort((a, b) => b.date.getTime() - a.date.getTime())
@@ -129,6 +141,7 @@ export default function StatsDashboard({ allDuels }: { allDuels: Duel[] }) {
               <div>
                 <p>Final Score: {selectedDuel.myScore} - {selectedDuel.opponentScore}</p>
                 <p>Result: {selectedDuel.outcome}</p>
+                <MatchRoundsTable duel={selectedDuel} />
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
