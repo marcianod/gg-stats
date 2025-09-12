@@ -96,7 +96,7 @@ export function MatchRoundsTable({ rounds, onRoundSelect, selectedRound }: Match
       </CardHeader>
       <CardContent>
         <Table>
-          <TableHeader className="sticky top-0 z-10">
+          <TableHeader className="sticky top-0 z-10 bg-background">
             <TableRow>
               <TableHead className="w-[120px]">
                 <Button variant="ghost" onClick={() => requestSort('date')}>

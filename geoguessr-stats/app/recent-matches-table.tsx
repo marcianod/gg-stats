@@ -74,7 +74,7 @@ export function RecentMatchesTable({ duels, onDuelSelect, selectedDuel }: Recent
 
   return (
     <Table>
-      <TableHeader>
+      <TableHeader className="sticky top-0 z-10 bg-background">
         <TableRow>
           <TableHead>
             <Button variant="ghost" onClick={() => requestSort('date')}>

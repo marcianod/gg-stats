@@ -91,16 +91,16 @@ function CountryStatsTable({ stats, onCountrySelect, selectedCountry }: { stats:
     };
 
     return (
-        <Card>
+        <Card className="overflow-hidden">
             <CardHeader className="px-7">
                 <CardTitle>Stats By Country</CardTitle>
                 <CardDescription>
                     Aggregated statistics for each country.
                 </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="overflow-y-auto" style={{ height: 'calc(100vh - 220px)' }}>
                 <Table>
-                    <TableHeader>
+                    <TableHeader className="sticky top-0 z-10 bg-background">
                         <TableRow>
                             <TableHead>
                                 <Button variant="ghost" onClick={() => requestSort('countryCode')}>
@@ -399,7 +399,7 @@ export default function StatsDashboard() {
   }
 
   return (
-    <>
+    <div className="flex h-screen overflow-hidden">
     <div className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8 lg:grid-cols-3 xl:grid-cols-3">
       <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-1">
         <Tabs defaultValue="matches" onValueChange={handleTabChange}>
@@ -408,7 +408,7 @@ export default function StatsDashboard() {
             <TabsTrigger value="countries">By Country</TabsTrigger>
           </TabsList>
           <TabsContent value="matches">
-            <Card>
+            <Card className="overflow-hidden">
               <CardHeader className="px-7">
                 <CardTitle>Matches</CardTitle>
                 <CardDescription>
@@ -416,7 +416,7 @@ export default function StatsDashboard() {
                   games loaded)
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="overflow-y-auto" style={{ height: 'calc(100vh - 220px)' }}>
                 {processedDuels.length > 0 ? (
                   <RecentMatchesTable duels={processedDuels} onDuelSelect={handleDuelSelect} selectedDuel={selectedDuel} />
                 ) : (
@@ -434,7 +434,7 @@ export default function StatsDashboard() {
       </div>
       <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
         {activeTab === 'matches' && (
-            <Card className="min-h-[80vh]">
+            <Card className="h-full overflow-hidden">
             <CardHeader>
                 <CardTitle>Match Details</CardTitle>
                 <CardDescription>
@@ -446,13 +446,9 @@ export default function StatsDashboard() {
             <CardContent>
                 <div className="flex flex-col">
                     <div className="w-full h-96">
-                                                {/* 
-                            The Map component should ideally allow clicking on a country to select it.
-                            If it does, it should call the `onCountrySelect` prop with the selected country's data.
-                        */}
                         <Map activeTab={activeTab} roundData={selectedRoundData} geoJson={geoJsonData} countryStats={countryStats} selectedCountry={selectedCountry} onCountrySelect={handleCountrySelect} />
                     </div>
-                    <div className="flex-grow overflow-y-auto" style={{ height: 'calc(100vh - 400px)' }}>
+                    <div className="flex-grow overflow-y-auto" style={{ height: 'calc(100vh - 500px)' }}>
                         {selectedDuel ? (
                           <>
                             <p>Final Score: {selectedDuel.myScore} - {selectedDuel.opponentScore}</p>
@@ -468,7 +464,7 @@ export default function StatsDashboard() {
             </Card>
         )}
         {activeTab === 'countries' && (
-            <Card className="min-h-[80vh]">
+            <Card className="h-full overflow-hidden">
             <CardHeader>
                 <CardTitle>Country Details</CardTitle>
                 <CardDescription>
@@ -491,7 +487,7 @@ export default function StatsDashboard() {
             selectedCountry={selectedCountry} 
             onCountrySelect={handleCountrySelect} />
                 </div>
-                <div className="flex-grow overflow-y-auto" style={{ height: 'calc(100vh - 400px)' }}>
+                <div className="flex-grow overflow-y-auto" style={{ height: 'calc(100vh - 500px)' }}>
           {selectedCountry ? (
           <div>
             {selectedCountryRounds && selectedCountryRounds.length > 0 ? (
@@ -514,6 +510,6 @@ export default function StatsDashboard() {
         )}
       </div>
     </div>
-  </>
+    </div>
   )
 }
