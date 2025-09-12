@@ -14,8 +14,4 @@ TypeScript Best Practices for this Project:
 
 5.  **Use Utility Types.** TypeScript's built-in utility types like `Partial<T>`, `Pick<T, K>`, and `Omit<T, K>` are very powerful for creating new types from existing ones without duplicating code.
 
-6.  **Log Solutions for Recurring Issues.** If you encounter a coding problem or a type error that takes significant time to debug and resolve, document the solution in this `coding_practices.txt` file. Explain the problem, the root cause, and the final solution. This will serve as a living guide to prevent repeating mistakes.
-
-7.  **Inspect Data During Debugging.** When encountering unexpected behavior related to data, especially with external data sources or complex transformations, use `console.log` to inspect the data at various stages. This helps verify data format, content, and consistency with expected types. Remember to remove `console.log` statements before committing.
-
 By following these simple rules, we can maintain a high level of code quality, prevent runtime errors, and ensure our builds don't fail due to linting issues.
