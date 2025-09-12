@@ -399,122 +399,124 @@ export default function StatsDashboard() {
   }
 
   return (
-    <>
-    <div className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8 lg:grid-cols-3 xl:grid-cols-3">
-      <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-1">
-        <Tabs defaultValue="matches" onValueChange={handleTabChange}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="matches">Recent Matches</TabsTrigger>
-            <TabsTrigger value="countries">By Country</TabsTrigger>
-          </TabsList>
-          <TabsContent value="matches">
-            <Card>
-              <CardHeader className="px-7">
-                <CardTitle>Matches</CardTitle>
-                <CardDescription>
-                  A list of your recent GeoGuessr duels. ({processedDuels.length} 
-                  games loaded)
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {processedDuels.length > 0 ? (
-                  <RecentMatchesTable duels={processedDuels} onDuelSelect={handleDuelSelect} selectedDuel={selectedDuel} />
-                ) : (
-                  <p className="py-8 text-center text-sm text-muted-foreground">
-                    No duels found.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-          <TabsContent value="countries">
-            <CountryStatsTable stats={countryStats} onCountrySelect={handleCountrySelect} selectedCountry={selectedCountry} />
-          </TabsContent>
-        </Tabs>
-      </div>
-      <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
-        {activeTab === 'matches' && (
-            <Card className="min-h-[80vh]">
-            <CardHeader>
+    <div className="flex h-screen overflow-hidden">
+      <div className="flex-1 overflow-y-auto p-4 sm:px-6 sm:py-0 md:gap-8 lg:grid-cols-3 xl:grid-cols-3">
+        <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-1">
+          <Tabs defaultValue="matches" onValueChange={handleTabChange}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="matches">Recent Matches</TabsTrigger>
+              <TabsTrigger value="countries">By Country</TabsTrigger>
+            </TabsList>
+            <TabsContent value="matches">
+              <Card className="flex flex-col h-[calc(100vh-120px)]"> {/* Adjusted height */}
+                <CardHeader className="px-7">
+                  <CardTitle>Matches</CardTitle>
+                  <CardDescription>
+                    A list of your recent GeoGuessr duels. ({processedDuels.length}
+                    games loaded)
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex-grow overflow-y-auto"> {/* Added overflow-y-auto */}
+                  {processedDuels.length > 0 ? (
+                    <RecentMatchesTable duels={processedDuels} onDuelSelect={handleDuelSelect} selectedDuel={selectedDuel} />
+                  ) : (
+                    <p className="py-8 text-center text-sm text-muted-foreground">
+                      No duels found.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+            <TabsContent value="countries">
+              <CountryStatsTable stats={countryStats} onCountrySelect={handleCountrySelect} selectedCountry={selectedCountry} />
+            </TabsContent>
+          </Tabs>
+        </div>
+        <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
+          {activeTab === 'matches' && (
+            <Card className="flex flex-col h-[calc(100vh-80px)]"> {/* Adjusted height */}
+              <CardHeader>
                 <CardTitle>Match Details</CardTitle>
                 <CardDescription>
-                {selectedDuel
+                  {selectedDuel
                     ? selectedDuel.options?.map?.name ?? 'Unknown Map'
                     : 'Select a match from the list to see its details.'}
                 </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <div className="flex flex-col">
-                    <div className="w-full h-96">
-                                                {/* 
+              </CardHeader>
+              <CardContent className="flex-grow overflow-y-auto"> {/* Added overflow-y-auto */}
+                <div className="flex flex-col h-full">
+                  <div className="w-full h-96">
+                    {/*
                             The Map component should ideally allow clicking on a country to select it.
                             If it does, it should call the `onCountrySelect` prop with the selected country's data.
                         */}
-                        <Map activeTab={activeTab} roundData={selectedRoundData} geoJson={geoJsonData} countryStats={countryStats} selectedCountry={selectedCountry} onCountrySelect={handleCountrySelect} />
-                    </div>
-                    <div className="flex-grow overflow-y-auto" style={{ height: 'calc(100vh - 400px)' }}>
-                        {selectedDuel ? (
-                          <>
-                            <p>Final Score: {selectedDuel.myScore} - {selectedDuel.opponentScore}</p>
-                            <p>Result: {selectedDuel.outcome}</p>
-                            <MatchRoundsTable rounds={selectedDuel.rounds} onRoundSelect={setSelectedRoundData} selectedRound={selectedRoundData} />
-                          </>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">Details will appear here.</p>
-                        )}
-                    </div>
+                    <Map activeTab={activeTab} roundData={selectedRoundData} geoJson={geoJsonData} countryStats={countryStats} selectedCountry={selectedCountry} onCountrySelect={handleCountrySelect} />
+                  </div>
+                  <div className="flex-grow overflow-y-auto mt-4"> {/* Removed fixed height, added mt-4 */}
+                    {selectedDuel ? (
+                      <>
+                        <p>Final Score: {selectedDuel.myScore} - {selectedDuel.opponentScore}</p>
+                        <p>Result: {selectedDuel.outcome}</p>
+                        <MatchRoundsTable rounds={selectedDuel.rounds} onRoundSelect={setSelectedRoundData} selectedRound={selectedRoundData} />
+                      </>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Details will appear here.</p>
+                    )}
+                  </div>
                 </div>
-            </CardContent>
+              </CardContent>
             </Card>
-        )}
-        {activeTab === 'countries' && (
-            <Card className="min-h-[80vh]">
-            <CardHeader>
+          )}
+          {activeTab === 'countries' && (
+            <Card className="flex flex-col h-[calc(100vh-80px)]"> {/* Adjusted height */}
+              <CardHeader>
                 <CardTitle>Country Details</CardTitle>
                 <CardDescription>
-                {selectedCountry
+                  {selectedCountry
                     ? `Stats for ${selectedCountry.countryCode.toUpperCase()}`
                     : 'Select a country to see details.'}
                 </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col">
-                <div className="w-full h-96">
-                                        {/* 
+              </CardHeader>
+              <CardContent className="flex-grow overflow-y-auto"> {/* Added overflow-y-auto */}
+                <div className="flex flex-col h-full">
+                  <div className="w-full h-96">
+                    {/*
                         The Map component should ideally allow clicking on a country to select it.
                         If it does, it should call the `onCountrySelect` prop with the selected country's data.
                     */}
-          <Map 
-            activeTab={activeTab} 
-            roundData={selectedRoundData} 
-            geoJson={geoJsonData} 
-            countryStats={countryStats} 
-            selectedCountry={selectedCountry} 
-            onCountrySelect={handleCountrySelect} />
-                </div>
-                <div className="flex-grow overflow-y-auto" style={{ height: 'calc(100vh - 400px)' }}>
-          {selectedCountry ? (
-          <div>
-            {selectedCountryRounds && selectedCountryRounds.length > 0 ? (
-              <div className="mt-4">
-                <h3 className="text-lg font-semibold mb-2">Rounds for {selectedCountry.countryCode.toUpperCase()}</h3>
-                <MatchRoundsTable rounds={selectedCountryRounds} onRoundSelect={setSelectedRoundData} selectedRound={selectedRoundData} />
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">No rounds for this country.</p>
-            )}
-          </div>
-          ) : (
-                    <p className="text-sm text-muted-foreground">
+                    <Map
+                      activeTab={activeTab}
+                      roundData={selectedRoundData}
+                      geoJson={geoJsonData}
+                      countryStats={countryStats}
+                      selectedCountry={selectedCountry}
+                      onCountrySelect={handleCountrySelect} />
+                  </div>
+                  <div className="flex-grow overflow-y-auto mt-4"> {/* Removed fixed height, added mt-4 */}
+                    {selectedCountry ? (
+                      <div>
+                        {selectedCountryRounds && selectedCountryRounds.length > 0 ? (
+                          <div className="mt-4">
+                            <h3 className="text-lg font-semibold mb-2">Rounds for {selectedCountry.countryCode.toUpperCase()}</h3>
+                            <MatchRoundsTable rounds={selectedCountryRounds} onRoundSelect={setSelectedRoundData} selectedRound={selectedRoundData} />
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">No rounds for this country.</p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
                         Details will appear here.
-                    </p>
+                      </p>
                     )}
+                  </div>
                 </div>
-            </CardContent>
+              </CardContent>
             </Card>
-        )}
+          )}
+        </div>
       </div>
     </div>
-  </>
   )
 }
 

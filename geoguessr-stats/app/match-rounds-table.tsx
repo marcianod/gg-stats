@@ -27,7 +27,7 @@ interface MatchRoundsTableProps {
   selectedRound: RoundData | null;
 }
 
-const INITIAL_VISIBLE_ROUNDS = 5;
+const INITIAL_VISIBLE_ROUNDS = 100;
 
 /**
  * Displays a table with a round-by-round breakdown of a duel.
