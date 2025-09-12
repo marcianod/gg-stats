@@ -1,6 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
-import StatsDashboard from './stats-dashboard.tsx';
+import StatsDashboard from '@/app/stats-dashboard';
 
 // Define a type for the duel object for consistency with the API route
 interface Player {
