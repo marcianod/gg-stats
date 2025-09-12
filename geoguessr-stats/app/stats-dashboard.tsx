@@ -98,8 +98,8 @@ function CountryStatsTable({ stats, onCountrySelect, selectedCountry }: { stats:
                     Aggregated statistics for each country.
                 </CardDescription>
             </CardHeader>
-            <CardContent className="flex-grow overflow-hidden">
-                <div className="h-full overflow-y-auto">
+            <CardContent className="flex-grow overflow-hidden p-0">
+                <div className="h-full overflow-y-auto p-7">
                     <Table>
                         <TableHeader className="sticky top-0 z-10 bg-background">
                             <TableRow>
@@ -418,8 +418,8 @@ export default function StatsDashboard() {
                   games loaded)
                 </CardDescription>
               </CardHeader>
-              <CardContent className="flex-grow overflow-hidden">
-                <div className="h-full overflow-y-auto">
+              <CardContent className="flex-grow overflow-hidden p-0">
+                <div className="h-full overflow-y-auto p-7">
                     {processedDuels.length > 0 ? (
                     <RecentMatchesTable duels={processedDuels} onDuelSelect={handleDuelSelect} selectedDuel={selectedDuel} />
                     ) : (
@@ -447,12 +447,12 @@ export default function StatsDashboard() {
                     : 'Select a match from the list to see its details.'}
                 </CardDescription>
             </CardHeader>
-            <CardContent className="flex-grow overflow-hidden">
+            <CardContent className="flex-grow overflow-hidden p-0">
                 <div className="flex flex-col h-full">
                     <div className="w-full h-96">
                         <Map activeTab={activeTab} roundData={selectedRoundData} geoJson={geoJsonData} countryStats={countryStats} selectedCountry={selectedCountry} onCountrySelect={handleCountrySelect} />
                     </div>
-                    <div className="flex-grow overflow-y-auto">
+                    <div className="flex-grow overflow-y-auto p-7">
                         {selectedDuel ? (
                           <>
                             <p>Final Score: {selectedDuel.myScore} - {selectedDuel.opponentScore}</p>
@@ -477,7 +477,7 @@ export default function StatsDashboard() {
                     : 'Select a country to see details.'}
                 </CardDescription>
             </CardHeader>
-            <CardContent className="flex-grow overflow-hidden">
+            <CardContent className="flex-grow overflow-hidden p-0">
                 <div className="flex flex-col h-full">
                     <div className="w-full h-96">
                         <Map
@@ -488,7 +488,7 @@ export default function StatsDashboard() {
                             selectedCountry={selectedCountry}
                             onCountrySelect={handleCountrySelect} />
                     </div>
-                    <div className="flex-grow overflow-y-auto">
+                    <div className="flex-grow overflow-y-auto p-7">
                         {selectedCountry ? (
                         <div>
                             {selectedCountryRounds && selectedCountryRounds.length > 0 ? (
