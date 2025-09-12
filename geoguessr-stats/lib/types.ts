@@ -51,12 +51,23 @@ export interface Duel {
   [key: string]: unknown;
 }
 
-export interface ProcessedDuel extends Duel {
+export interface ProcessedDuel {
+  gameId: string;
+  rounds: RoundData[];
+  options?: {
+    map?: {
+      name?: string;
+    };
+  };
+  teams?: Team[];
+  result?: {
+    winningTeamId?: string;
+  };
+  [key: string]: unknown;
   date: Date;
   myScore: number;
   opponentScore: number;
   outcome: "Win" | "Loss" | "Draw" | "Unknown";
-  rounds: RoundData[];
 }
 
 export interface RoundData {
