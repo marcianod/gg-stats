@@ -134,9 +134,10 @@ export default function StatsDashboard() {
     setSelectedCountry(null); // Reset selected country when a duel is selected
   }
 
-  const handleCountrySelect = (country: CountryData) => {
+  const handleCountrySelect = (countryCode: string) => {
+    const country = countryStats.find(c => c.countryCode === countryCode) || null;
     setSelectedCountry(country);
-    setSelectedCountryRounds(country.rounds);
+    setSelectedCountryRounds(country?.rounds ?? null);
   };
 
   const processedDuels = useMemo(() => {
