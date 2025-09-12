@@ -91,60 +91,62 @@ function CountryStatsTable({ stats, onCountrySelect, selectedCountry }: { stats:
     };
 
     return (
-        <Card className="overflow-hidden">
+        <Card className="flex flex-col h-full">
             <CardHeader className="px-7">
                 <CardTitle>Stats By Country</CardTitle>
                 <CardDescription>
                     Aggregated statistics for each country.
                 </CardDescription>
             </CardHeader>
-            <CardContent className="overflow-y-auto" style={{ height: 'calc(100vh - 220px)' }}>
-                <Table>
-                    <TableHeader className="sticky top-0 z-10 bg-background">
-                        <TableRow>
-                            <TableHead>
-                                <Button variant="ghost" onClick={() => requestSort('countryCode')}>
-                                    Country{getSortIndicator('countryCode')}
-                                </Button>
-                            </TableHead>
-                            <TableHead className="text-right">
-                                <Button variant="ghost" onClick={() => requestSort('winRate')}>
-                                    Win Rate{getSortIndicator('winRate')}
-                                </Button>
-                            </TableHead>
-                            <TableHead className="text-right">
-                                <Button variant="ghost" onClick={() => requestSort('avgScoreDelta')}>
-                                    Avg. Score Δ{getSortIndicator('avgScoreDelta')}
-                                </Button>
-                            </TableHead>
-                            <TableHead className="text-right">
-                                <Button variant="ghost" onClick={() => requestSort('totalRounds')}>
-                                    Total Rounds{getSortIndicator('totalRounds')}
-                                </Button>
-                            </TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {sortedStats.map((stat) => (
-                            <TableRow
-                                key={stat.countryCode}
-                                onClick={() => onCountrySelect(stat.countryCode)}
-                                className={cn(
-                                    'cursor-pointer',
-                                    selectedCountry?.countryCode === stat.countryCode && 'bg-accent'
-                                )}>
-                                <TableCell>{stat.countryCode.toUpperCase()}</TableCell>
-                                <TableCell className="text-right">
-                                    {`${((stat.wins / stat.totalRounds) * 100).toFixed(1)}%`}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                    {`${(stat.totalScoreDelta / stat.totalRounds).toFixed(0)}`}
-                                </TableCell>
-                                <TableCell className="text-right">{stat.totalRounds}</TableCell>
+            <CardContent className="flex-grow overflow-hidden">
+                <div className="h-full overflow-y-auto">
+                    <Table>
+                        <TableHeader className="sticky top-0 z-10 bg-background">
+                            <TableRow>
+                                <TableHead>
+                                    <Button variant="ghost" onClick={() => requestSort('countryCode')}>
+                                        Country{getSortIndicator('countryCode')}
+                                    </Button>
+                                </TableHead>
+                                <TableHead className="text-right">
+                                    <Button variant="ghost" onClick={() => requestSort('winRate')}>
+                                        Win Rate{getSortIndicator('winRate')}
+                                    </Button>
+                                </TableHead>
+                                <TableHead className="text-right">
+                                    <Button variant="ghost" onClick={() => requestSort('avgScoreDelta')}>
+                                        Avg. Score Δ{getSortIndicator('avgScoreDelta')}
+                                    </Button>
+                                </TableHead>
+                                <TableHead className="text-right">
+                                    <Button variant="ghost" onClick={() => requestSort('totalRounds')}>
+                                        Total Rounds{getSortIndicator('totalRounds')}
+                                    </Button>
+                                </TableHead>
                             </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
+                        </TableHeader>
+                        <TableBody>
+                            {sortedStats.map((stat) => (
+                                <TableRow
+                                    key={stat.countryCode}
+                                    onClick={() => onCountrySelect(stat.countryCode)}
+                                    className={cn(
+                                        'cursor-pointer',
+                                        selectedCountry?.countryCode === stat.countryCode && 'bg-accent'
+                                    )}>
+                                    <TableCell>{stat.countryCode.toUpperCase()}</TableCell>
+                                    <TableCell className="text-right">
+                                        {`${((stat.wins / stat.totalRounds) * 100).toFixed(1)}%`}
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        {`${(stat.totalScoreDelta / stat.totalRounds).toFixed(0)}`}
+                                    </TableCell>
+                                    <TableCell className="text-right">{stat.totalRounds}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
             </CardContent>
         </Card>
     );
@@ -408,22 +410,24 @@ export default function StatsDashboard() {
             <TabsTrigger value="countries">By Country</TabsTrigger>
           </TabsList>
           <TabsContent value="matches">
-            <Card className="overflow-hidden">
+            <Card className="flex flex-col h-full">
               <CardHeader className="px-7">
                 <CardTitle>Matches</CardTitle>
                 <CardDescription>
-                  A list of your recent GeoGuessr duels. ({processedDuels.length} 
+                  A list of your recent GeoGuessr duels. ({processedDuels.length}
                   games loaded)
                 </CardDescription>
               </CardHeader>
-              <CardContent className="overflow-y-auto" style={{ height: 'calc(100vh - 220px)' }}>
-                {processedDuels.length > 0 ? (
-                  <RecentMatchesTable duels={processedDuels} onDuelSelect={handleDuelSelect} selectedDuel={selectedDuel} />
-                ) : (
-                  <p className="py-8 text-center text-sm text-muted-foreground">
-                    No duels found.
-                  </p>
-                )}
+              <CardContent className="flex-grow overflow-hidden">
+                <div className="h-full overflow-y-auto">
+                    {processedDuels.length > 0 ? (
+                    <RecentMatchesTable duels={processedDuels} onDuelSelect={handleDuelSelect} selectedDuel={selectedDuel} />
+                    ) : (
+                    <p className="py-8 text-center text-sm text-muted-foreground">
+                        No duels found.
+                    </p>
+                    )}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -434,7 +438,7 @@ export default function StatsDashboard() {
       </div>
       <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
         {activeTab === 'matches' && (
-            <Card className="h-full overflow-hidden">
+            <Card className="flex flex-col h-full">
             <CardHeader>
                 <CardTitle>Match Details</CardTitle>
                 <CardDescription>
@@ -443,12 +447,12 @@ export default function StatsDashboard() {
                     : 'Select a match from the list to see its details.'}
                 </CardDescription>
             </CardHeader>
-            <CardContent>
-                <div className="flex flex-col">
+            <CardContent className="flex-grow overflow-hidden">
+                <div className="flex flex-col h-full">
                     <div className="w-full h-96">
                         <Map activeTab={activeTab} roundData={selectedRoundData} geoJson={geoJsonData} countryStats={countryStats} selectedCountry={selectedCountry} onCountrySelect={handleCountrySelect} />
                     </div>
-                    <div className="flex-grow overflow-y-auto" style={{ height: 'calc(100vh - 500px)' }}>
+                    <div className="flex-grow overflow-y-auto">
                         {selectedDuel ? (
                           <>
                             <p>Final Score: {selectedDuel.myScore} - {selectedDuel.opponentScore}</p>
@@ -464,7 +468,7 @@ export default function StatsDashboard() {
             </Card>
         )}
         {activeTab === 'countries' && (
-            <Card className="h-full overflow-hidden">
+            <Card className="flex flex-col h-full">
             <CardHeader>
                 <CardTitle>Country Details</CardTitle>
                 <CardDescription>
@@ -473,37 +477,35 @@ export default function StatsDashboard() {
                     : 'Select a country to see details.'}
                 </CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-col">
-                <div className="w-full h-96">
-                                        {/* 
-                        The Map component should ideally allow clicking on a country to select it.
-                        If it does, it should call the `onCountrySelect` prop with the selected country's data.
-                    */}
-          <Map 
-            activeTab={activeTab} 
-            roundData={selectedRoundData} 
-            geoJson={geoJsonData} 
-            countryStats={countryStats} 
-            selectedCountry={selectedCountry} 
-            onCountrySelect={handleCountrySelect} />
-                </div>
-                <div className="flex-grow overflow-y-auto" style={{ height: 'calc(100vh - 500px)' }}>
-          {selectedCountry ? (
-          <div>
-            {selectedCountryRounds && selectedCountryRounds.length > 0 ? (
-              <div className="mt-4">
-                <h3 className="text-lg font-semibold mb-2">Rounds for {selectedCountry.countryCode.toUpperCase()}</h3>
-                <MatchRoundsTable rounds={selectedCountryRounds} onRoundSelect={setSelectedRoundData} selectedRound={selectedRoundData} />
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">No rounds for this country.</p>
-            )}
-          </div>
-          ) : (
-                    <p className="text-sm text-muted-foreground">
-                        Details will appear here.
-                    </p>
-                    )}
+            <CardContent className="flex-grow overflow-hidden">
+                <div className="flex flex-col h-full">
+                    <div className="w-full h-96">
+                        <Map
+                            activeTab={activeTab}
+                            roundData={selectedRoundData}
+                            geoJson={geoJsonData}
+                            countryStats={countryStats}
+                            selectedCountry={selectedCountry}
+                            onCountrySelect={handleCountrySelect} />
+                    </div>
+                    <div className="flex-grow overflow-y-auto">
+                        {selectedCountry ? (
+                        <div>
+                            {selectedCountryRounds && selectedCountryRounds.length > 0 ? (
+                            <div className="mt-4">
+                                <h3 className="text-lg font-semibold mb-2">Rounds for {selectedCountry.countryCode.toUpperCase()}</h3>
+                                <MatchRoundsTable rounds={selectedCountryRounds} onRoundSelect={setSelectedRoundData} selectedRound={selectedRoundData} />
+                            </div>
+                            ) : (
+                            <p className="text-sm text-muted-foreground">No rounds for this country.</p>
+                            )}
+                        </div>
+                        ) : (
+                        <p className="text-sm text-muted-foreground">
+                            Details will appear here.
+                        </p>
+                        )}
+                    </div>
                 </div>
             </CardContent>
             </Card>

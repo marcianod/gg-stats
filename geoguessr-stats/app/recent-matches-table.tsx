@@ -73,42 +73,44 @@ export function RecentMatchesTable({ duels, onDuelSelect, selectedDuel }: Recent
   };
 
   return (
-    <Table>
-      <TableHeader className="sticky top-0 z-10 bg-background">
-        <TableRow>
-          <TableHead>
-            <Button variant="ghost" onClick={() => requestSort('date')}>
-              Date{getSortIndicator('date')}
-            </Button>
-          </TableHead>
-          <TableHead>
-            <Button variant="ghost" onClick={() => requestSort('mapName')}>
-              Map{getSortIndicator('mapName')}
-            </Button>
-          </TableHead>
-          <TableHead>
-            <Button variant="ghost" onClick={() => requestSort('outcome')}>
-              Result{getSortIndicator('outcome')}
-            </Button>
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {sortedDuels.map((duel) => (
-          <TableRow
-            key={duel.gameId}
-            onClick={() => onDuelSelect(duel)}
-            className={cn(
-              'cursor-pointer',
-              selectedDuel?.gameId === duel.gameId && 'bg-accent'
-            )}
-          >
-            <TableCell>{duel.date.toLocaleDateString()}</TableCell>
-            <TableCell>{duel.options?.map?.name ?? 'Unknown Map'}</TableCell>
-            <TableCell>{duel.outcome}</TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+    <div className="h-full overflow-y-auto">
+        <Table>
+        <TableHeader className="sticky top-0 z-10 bg-background">
+            <TableRow>
+            <TableHead>
+                <Button variant="ghost" onClick={() => requestSort('date')}>
+                Date{getSortIndicator('date')}
+                </Button>
+            </TableHead>
+            <TableHead>
+                <Button variant="ghost" onClick={() => requestSort('mapName')}>
+                Map{getSortIndicator('mapName')}
+                </Button>
+            </TableHead>
+            <TableHead>
+                <Button variant="ghost" onClick={() => requestSort('outcome')}>
+                Result{getSortIndicator('outcome')}
+                </Button>
+            </TableHead>
+            </TableRow>
+        </TableHeader>
+        <TableBody>
+            {sortedDuels.map((duel) => (
+            <TableRow
+                key={duel.gameId}
+                onClick={() => onDuelSelect(duel)}
+                className={cn(
+                'cursor-pointer',
+                selectedDuel?.gameId === duel.gameId && 'bg-accent'
+                )}
+            >
+                <TableCell>{duel.date.toLocaleDateString()}</TableCell>
+                <TableCell>{duel.options?.map?.name ?? 'Unknown Map'}</TableCell>
+                <TableCell>{duel.outcome}</TableCell>
+            </TableRow>
+            ))}
+        </TableBody>
+        </Table>
+    </div>
   );
 }

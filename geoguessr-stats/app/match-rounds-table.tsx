@@ -9,7 +9,6 @@ import {
   TableFooter
 } from '@/components/ui/table'
 import { type RoundData } from '../lib/types'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button';
 import { ArrowUpDown } from 'lucide-react';
@@ -90,49 +89,45 @@ export function MatchRoundsTable({ rounds, onRoundSelect, selectedRound }: Match
   };
 
   return (
-    <Card className="mt-6">
-      <CardHeader>
-        <CardTitle>Round Details</CardTitle>
-      </CardHeader>
-      <CardContent>
+    <div className="h-full overflow-y-auto">
         <Table>
-          <TableHeader className="sticky top-0 z-10 bg-background">
+        <TableHeader className="sticky top-0 z-10 bg-background">
             <TableRow>
-              <TableHead className="w-[120px]">
+            <TableHead className="w-[120px]">
                 <Button variant="ghost" onClick={() => requestSort('date')}>
-                  Date{getSortIndicator('date')}
+                Date{getSortIndicator('date')}
                 </Button>
-              </TableHead>
-              <TableHead>
+            </TableHead>
+            <TableHead>
                 <Button variant="ghost" onClick={() => requestSort('country')}>
-                  Country{getSortIndicator('country')}
+                Country{getSortIndicator('country')}
                 </Button>
-              </TableHead>
-              <TableHead className="text-right">
+            </TableHead>
+            <TableHead className="text-right">
                 <Button variant="ghost" onClick={() => requestSort('playerScore')}>
-                  My Score{getSortIndicator('playerScore')}
+                My Score{getSortIndicator('playerScore')}
                 </Button>
-              </TableHead>
-              <TableHead className="text-right">
+            </TableHead>
+            <TableHead className="text-right">
                 <Button variant="ghost" onClick={() => requestSort('opponentScore')}>
-                  Opponent Score{getSortIndicator('opponentScore')}
+                Opponent Score{getSortIndicator('opponentScore')}
                 </Button>
-              </TableHead>
-              <TableHead className="text-right">
+            </TableHead>
+            <TableHead className="text-right">
                 <Button variant="ghost" onClick={() => requestSort('distance')}>
-                  Distance{getSortIndicator('distance')}
+                Distance{getSortIndicator('distance')}
                 </Button>
-              </TableHead>
-              <TableHead className="text-right">
+            </TableHead>
+            <TableHead className="text-right">
                 <Button variant="ghost" onClick={() => requestSort('time')}>
-                  Time{getSortIndicator('time')}
+                Time{getSortIndicator('time')}
                 </Button>
-              </TableHead>
+            </TableHead>
             </TableRow>
-          </TableHeader>
-          <TableBody>
+        </TableHeader>
+        <TableBody>
             {roundDetails?.slice(0, visibleRounds).map(detail => (
-              <TableRow 
+            <TableRow
                 key={`${detail.roundData.duelId}-${detail.date.getTime()}`}
                 onClick={() => detail.roundData && onRoundSelect(detail.roundData)}
                 className={cn(
@@ -145,20 +140,19 @@ export function MatchRoundsTable({ rounds, onRoundSelect, selectedRound }: Match
                 <TableCell className="text-right">{typeof detail.opponentScore === 'number' ? detail.opponentScore.toLocaleString() : 'N/A'}</TableCell>
                 <TableCell className="text-right">{detail.distance ? `${(detail.distance / 1000).toFixed(1)} km` : 'N/A'}</TableCell>
                 <TableCell className="text-right">{detail.time ? `${detail.time.toFixed(1)}s` : 'N/A'}</TableCell>
-              </TableRow>
+            </TableRow>
             ))}
-          </TableBody>
-          {rounds.length > visibleRounds && (
+        </TableBody>
+        {rounds.length > visibleRounds && (
             <TableFooter>
-              <TableRow>
+            <TableRow>
                 <TableCell colSpan={6} className="text-center">
-                  <Button onClick={handleShowMore}>Show More</Button>
+                <Button onClick={handleShowMore}>Show More</Button>
                 </TableCell>
-              </TableRow>
+            </TableRow>
             </TableFooter>
-          )}
+        )}
         </Table>
-      </CardContent>
-    </Card>
+    </div>
   )
 }
