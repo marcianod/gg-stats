@@ -15,3 +15,19 @@ TypeScript Best Practices for this Project:
 5.  **Use Utility Types.** TypeScript's built-in utility types like `Partial<T>`, `Pick<T, K>`, and `Omit<T, K>` are very powerful for creating new types from existing ones without duplicating code.
 
 By following these simple rules, we can maintain a high level of code quality, prevent runtime errors, and ensure our builds don't fail due to linting issues.
+
+---
+
+**Agent Memory & Learning:**
+
+1.  **Log Recurring Solutions:** When a solution is found for a recurring problem (e.g., repeated typing errors, data format mismatches), add the problem description and its solution to this `coding_practices.txt` file. This serves as a persistent memory to prevent repeating the same errors.
+
+2.  **Log Important Information:** Always log important information, such as debugging steps, key findings, and resolutions to persistent issues, in this file. This ensures that critical context and learned lessons are retained for future reference and to improve efficiency.
+
+---
+
+**Recurring Problem: Data Format/Casing Mismatches**
+
+**Problem Description:** Discrepancies in data formats or casing between different data sources (e.g., lowercase country codes in one source, uppercase in another) can lead to failed data matching and incorrect display.
+
+**Solution:** Ensure consistent data formats and casing across all integrated data sources. Apply necessary transformations (e.g., `.toLowerCase()`, `.toUpperCase()`, or specific parsing functions) at the point of data integration or comparison to standardize the format. This prevents silent failures in data lookups and ensures accurate representation.

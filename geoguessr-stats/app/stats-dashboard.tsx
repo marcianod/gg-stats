@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import {
   Card,
@@ -74,13 +74,47 @@ function CountryStatsTable({ stats, onCountrySelect, selectedCountry }: { stats:
     );
 }
 
-export default function StatsDashboard({ allDuels, geoJson }: { allDuels: Duel[], geoJson: GeoJson | null }) {
-  console.log('StatsDashboard received allDuels:', allDuels);
-  console.log('StatsDashboard received geoJson:', geoJson);
+export default function StatsDashboard() {
+  const [duels, setDuels] = useState<Duel[]>([]);
+  const [geoJsonData, setGeoJsonData] = useState<GeoJson | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const [activeTab, setActiveTab] = useState('matches');
   const [selectedDuel, setSelectedDuel] = useState<ProcessedDuel | null>(null)
   const [selectedCountry, setSelectedCountry] = useState<CountryData | null>(null);
   const [selectedRoundData, setSelectedRoundData] = useState<RoundData | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [duelsResponse, geoJsonReponse] = await Promise.all([
+          fetch('/data/geoguessr_stats.json'),
+          fetch('/data/countries.geojson'),
+        ]);
+
+        if (!duelsResponse.ok) {
+          throw new Error(`HTTP error! status: ${duelsResponse.status} for duels.json`);
+        }
+        if (!geoJsonReponse.ok) {
+          throw new Error(`HTTP error! status: ${geoJsonReponse.status} for countries.geojson`);
+        }
+
+        const duelsData: Duel[] = await duelsResponse.json();
+        const geoJson: GeoJson = await geoJsonReponse.json();
+
+        setDuels(duelsData.flat(Infinity)); // Flatten the duels array
+        setGeoJsonData(geoJson);
+      } catch (e: any) {
+        setError(e.message);
+        console.error("Failed to fetch data:", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const handleTabChange = (value: string) => {
       setActiveTab(value);
@@ -105,7 +139,7 @@ export default function StatsDashboard({ allDuels, geoJson }: { allDuels: Duel[]
   };
 
   const processedDuels = useMemo(() => {
-    return allDuels
+    return duels
       .map((duel) => {
         if (!duel.teams || duel.teams.length < 2 || !duel.rounds || duel.rounds.length === 0) {
           return null
@@ -156,7 +190,7 @@ export default function StatsDashboard({ allDuels, geoJson }: { allDuels: Duel[]
       })
       .filter((d): d is ProcessedDuel => d !== null)
       .sort((a, b) => b.date.getTime() - a.date.getTime())
-  }, [allDuels])
+  }, [duels])
 
   const countryStats: CountryData[] = useMemo(() => {
     const stats: Record<string, {
@@ -213,11 +247,17 @@ export default function StatsDashboard({ allDuels, geoJson }: { allDuels: Duel[]
     }));
   }, [processedDuels]);
 
-  console.log('Country Stats generated:', countryStats);
-
   // Select the most recent duel by default
   if (!selectedDuel && processedDuels.length > 0 && activeTab === 'matches') {
     setSelectedDuel(processedDuels[0]);
+  }
+
+  if (loading) {
+    return <div className="flex min-h-screen items-center justify-center">Loading data...</div>;
+  }
+
+  if (error) {
+    return <div className="flex min-h-screen items-center justify-center text-red-500">Error: {error}</div>;
   }
 
   return (
@@ -286,7 +326,7 @@ export default function StatsDashboard({ allDuels, geoJson }: { allDuels: Duel[]
                 {selectedDuel ? (
                 <div className="flex flex-col h-[75vh]">
                     <div className="h-96 w-full">
-                        <Map activeTab={activeTab} roundData={selectedRoundData} geoJson={geoJson} countryStats={countryStats} selectedCountry={selectedCountry} onCountrySelect={handleCountrySelect} />
+                        <Map activeTab={activeTab} roundData={selectedRoundData} geoJson={geoJsonData} countryStats={countryStats} selectedCountry={selectedCountry} onCountrySelect={handleCountrySelect} />
                     </div>
                     <div className="flex-grow overflow-y-auto">
                         <p>Final Score: {selectedDuel.myScore} - {selectedDuel.opponentScore}</p>
@@ -317,7 +357,7 @@ export default function StatsDashboard({ allDuels, geoJson }: { allDuels: Duel[]
                     <Map 
                         activeTab={activeTab} 
                         roundData={null} 
-                        geoJson={geoJson} 
+                        geoJson={geoJsonData} 
                         countryStats={countryStats} 
                         selectedCountry={selectedCountry} 
                         onCountrySelect={handleCountrySelect} />
