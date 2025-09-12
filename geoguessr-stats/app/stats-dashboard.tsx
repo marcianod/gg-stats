@@ -280,9 +280,9 @@ export default function StatsDashboard() {
             const opponentPlayer = opponentTeam.players[0];
             const myGuess = mePlayer.guesses.find(g => g.roundNumber === round.roundNumber);
             const opponentGuess = opponentPlayer.guesses.find(g => g.roundNumber === round.roundNumber);
-            const scoreDelta = (myGuess?.score || 0) - (opponentGuess?.score || 0);
-            const distDelta = (myGuess?.distance || 0) - (opponentGuess?.distance || 0);
-            const timeDelta = ((myGuess?.time || 0) - (opponentGuess?.time || 0));
+            const scoreDelta = (myGuess?.score ?? 0) - (opponentGuess?.score ?? 0);
+            const distDelta = (myGuess?.distance ?? 0) - (opponentGuess?.distance ?? 0);
+            const timeDelta = ((myGuess?.time ?? 0) - (opponentGuess?.time ?? 0));
 
             return {
               actual: { lat: round.panorama?.lat || 0, lng: round.panorama?.lng || 0, heading: round.panorama?.heading, pitch: round.panorama?.pitch, zoom: round.panorama?.zoom },
@@ -294,10 +294,10 @@ export default function StatsDashboard() {
               myPlayerId: mePlayer.playerId,
               opponentPlayerId: opponentPlayer.playerId,
               date: new Date(round.startTime),
-              won: (myGuess?.score || 0) > (opponentGuess?.score || 0),
+              won: (myGuess?.score ?? 0) > (opponentGuess?.score ?? 0),
               scoreDelta: scoreDelta,
-              distDelta: distDelta,
-              timeDelta: timeDelta,
+              distDelta: (myGuess?.distance ?? 0) - (opponentGuess?.distance ?? 0),
+              timeDelta: (myGuess?.time ?? 0) - (opponentGuess?.time ?? 0),
             };
           }),
         }
@@ -345,11 +345,11 @@ export default function StatsDashboard() {
         const opponentGuess = opponentPlayer.guesses.find(g => g.roundNumber === round.roundNumber);
 
         if (myGuess && opponentGuess) {
-            const scoreDelta = myGuess.score - opponentGuess.score;
+            const scoreDelta = (myGuess.score ?? 0) - (opponentGuess.score ?? 0);
             stats[countryCode].totalScoreDelta += scoreDelta;
-            if (myGuess.score > opponentGuess.score) {
+            if ((myGuess.score ?? 0) > (opponentGuess.score ?? 0)) {
                 stats[countryCode].wins++;
-            } else if (myGuess.score < opponentGuess.score) {
+            } else if ((myGuess.score ?? 0) < (opponentGuess.score ?? 0)) {
                 stats[countryCode].losses++;
             } else {
                 stats[countryCode].draws++;
@@ -363,13 +363,13 @@ export default function StatsDashboard() {
                 roundNumber: round.roundNumber,
                 countryCode: countryCode,
                 duelId: duel.gameId,
-                myPlayerId: myPlayer.playerId,
+                myPlayerId: mePlayer.playerId,
                 opponentPlayerId: opponentPlayer.playerId,
                 date: new Date(round.date),
-                won: (myGuess.score || 0) > (opponentGuess.score || 0),
+                won: (myGuess.score ?? 0) > (opponentGuess.score ?? 0),
                 scoreDelta: scoreDelta,
-                distDelta: (myGuess.distance || 0) - (opponentGuess.distance || 0),
-                timeDelta: (myGuess.time || 0) - (opponentGuess.time || 0),
+                distDelta: (myGuess.distance ?? 0) - (opponentGuess.distance ?? 0),
+                timeDelta: (myGuess.time ?? 0) - (opponentGuess.time ?? 0),
             });
         }
       });
@@ -399,129 +399,69 @@ export default function StatsDashboard() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <div className="flex-1 overflow-y-auto p-4 sm:px-6 sm:py-0 md:gap-8 lg:grid-cols-3 xl:grid-cols-3">
-        <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-1">
-          <Tabs defaultValue="matches" onValueChange={handleTabChange}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="matches">Recent Matches</TabsTrigger>
-              <TabsTrigger value="countries">By Country</TabsTrigger>
-            </TabsList>
-            <TabsContent value="matches">
-              <Card className="flex flex-col h-[calc(100vh-120px)]"> {/* Adjusted height */}
-                <CardHeader className="px-7">
-                  <CardTitle>Matches</CardTitle>
-                  <CardDescription>
-                    A list of your recent GeoGuessr duels. ({processedDuels.length}
-                    games loaded)
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex-grow overflow-y-auto"> {/* Added overflow-y-auto */}
-                  {processedDuels.length > 0 ? (
-                    <RecentMatchesTable duels={processedDuels} onDuelSelect={handleDuelSelect} selectedDuel={selectedDuel} />
-                  ) : (
-                    <p className="py-8 text-center text-sm text-muted-foreground">
-                      No duels found.
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-            <TabsContent value="countries">
-              <CountryStatsTable stats={countryStats} onCountrySelect={handleCountrySelect} selectedCountry={selectedCountry} />
-            </TabsContent>
-          </Tabs>
-        </div>
-        <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
-          {activeTab === 'matches' && (
-            <Card className="flex flex-col h-[calc(100vh-80px)]"> {/* Adjusted height */}
-              <CardHeader>
-                <CardTitle>Match Details</CardTitle>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 p-4">
+      <div className="lg:col-span-1 flex flex-col gap-4">
+        <Tabs value={activeTab} onValueChange={handleTabChange}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="matches">Matches</TabsTrigger>
+            <TabsTrigger value="countries">Countries</TabsTrigger>
+          </TabsList>
+          <TabsContent value="matches">
+            <Card>
+              <CardHeader className="px-7">
+                <CardTitle>Recent Matches</CardTitle>
                 <CardDescription>
-                  {selectedDuel
-                    ? selectedDuel.options?.map?.name ?? 'Unknown Map'
-                    : 'Select a match from the list to see its details.'}
+                  A list of your most recent duels.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="flex-grow overflow-y-auto"> {/* Added overflow-y-auto */}
-                <div className="flex flex-col h-full">
-                  <div className="w-full h-96">
-                    {/*
-                            The Map component should ideally allow clicking on a country to select it.
-                            If it does, it should call the `onCountrySelect` prop with the selected country's data.
-                        */}
-                    <Map activeTab={activeTab} roundData={selectedRoundData} geoJson={geoJsonData} countryStats={countryStats} selectedCountry={selectedCountry} onCountrySelect={handleCountrySelect} />
-                  </div>
-                  <div className="flex-grow overflow-y-auto mt-4"> {/* Removed fixed height, added mt-4 */}
-                    {selectedDuel ? (
-                      <>
-                        <p>Final Score: {selectedDuel.myScore} - {selectedDuel.opponentScore}</p>
-                        <p>Result: {selectedDuel.outcome}</p>
-                        <MatchRoundsTable rounds={selectedDuel.rounds} onRoundSelect={setSelectedRoundData} selectedRound={selectedRoundData} />
-                      </>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">Details will appear here.</p>
-                    )}
-                  </div>
-                </div>
+              <CardContent>
+                <RecentMatchesTable
+                  duels={processedDuels}
+                  onDuelSelect={handleDuelSelect}
+                  selectedDuel={selectedDuel}
+                />
               </CardContent>
             </Card>
-          )}
-          {activeTab === 'countries' && (
-            <Card className="flex flex-col h-[calc(100vh-80px)]"> {/* Adjusted height */}
-              <CardHeader>
-                <CardTitle>Country Details</CardTitle>
-                <CardDescription>
-                  {selectedCountry
-                    ? `Stats for ${selectedCountry.countryCode.toUpperCase()}`
-                    : 'Select a country to see details.'}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex-grow overflow-y-auto"> {/* Added overflow-y-auto */}
-                <div className="flex flex-col h-full">
-                  <div className="w-full h-96">
-                    {/*
-                        The Map component should ideally allow clicking on a country to select it.
-                        If it does, it should call the `onCountrySelect` prop with the selected country's data.
-                    */}
-                    <Map
-                      activeTab={activeTab}
-                      roundData={selectedRoundData}
-                      geoJson={geoJsonData}
-                      countryStats={countryStats}
-                      selectedCountry={selectedCountry}
-                      onCountrySelect={handleCountrySelect} />
-                  </div>
-                  <div className="flex-grow overflow-y-auto mt-4"> {/* Removed fixed height, added mt-4 */}
-                    {selectedCountry ? (
-                      <div>
-                        {selectedCountryRounds && selectedCountryRounds.length > 0 ? (
-                          <div className="mt-4">
-                            <h3 className="text-lg font-semibold mb-2">Rounds for {selectedCountry.countryCode.toUpperCase()}</h3>
-                            <MatchRoundsTable rounds={selectedCountryRounds} onRoundSelect={setSelectedRoundData} selectedRound={selectedRoundData} />
-                          </div>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">No rounds for this country.</p>
-                        )}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">
-                        Details will appear here.
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          </TabsContent>
+          <TabsContent value="countries">
+            <CountryStatsTable
+              stats={countryStats}
+              onCountrySelect={handleCountrySelect}
+              selectedCountry={selectedCountry}
+            />
+          </TabsContent>
+        </Tabs>
+      </div>
+
+      <div className="lg:col-span-2">
+        <div className="sticky top-0">
+          <Map
+            activeTab={activeTab}
+            roundData={selectedRoundData}
+            geoJson={geoJsonData}
+            countryStats={countryStats}
+            selectedCountry={selectedCountry}
+            onCountrySelect={handleCountrySelect}
+          />
         </div>
       </div>
+
+      <div className="lg:col-span-3">
+        {(activeTab === 'matches' && selectedDuel) && (
+          <MatchRoundsTable
+            rounds={selectedDuel.rounds ?? []}
+            onRoundSelect={setSelectedRoundData}
+            selectedRound={selectedRoundData}
+          />
+        )}
+        {(activeTab === 'countries' && selectedCountryRounds) && (
+          <MatchRoundsTable
+            rounds={selectedCountryRounds}
+            onRoundSelect={setSelectedRoundData}
+            selectedRound={selectedRoundData}
+          />
+        )}
+      </div>
     </div>
-  )
+  );
 }
-
-// Attach modal renderer to the default export component by adding it to the module's top-level render
-// (we can't render from inside the function after return without refactor, so consumers import this file's default
-// export which controls state and modal rendering via _RoundModalRenderer below)
-
-// (modal removed; clicking a round now activates the Matches tab and selects the round)
