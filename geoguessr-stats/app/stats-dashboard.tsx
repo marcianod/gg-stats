@@ -306,10 +306,13 @@ export default function StatsDashboard() {
   }, [processedDuels]);
 
   useEffect(() => {
-    if (!selectedDuel && processedDuels.length > 0 && activeTab === 'matches') {
+    // Only auto-select the most recent duel when we don't already have a selected round.
+    // This prevents clicking a country-round (which sets selectedRoundData) from
+    // causing the UI to auto-select and replace the rounds table.
+    if (!selectedDuel && processedDuels.length > 0 && activeTab === 'matches' && !selectedRoundData) {
       setSelectedDuel(processedDuels[0]);
     }
-  }, [processedDuels, activeTab, selectedDuel]);
+  }, [processedDuels, activeTab, selectedDuel, selectedRoundData]);
 
   if (loading) {
     return <div className="flex min-h-screen items-center justify-center">Loading data...</div>;
@@ -452,7 +455,12 @@ export default function StatsDashboard() {
                                     </TableHeader>
                                     <TableBody>
                                     {selectedCountryRounds.map((round, index) => (
-                                      <TableRow key={index} onClick={() => { setActiveTab('matches'); setSelectedRoundData(round); }} className={cn('cursor-pointer', selectedRoundData?.duelId === round.duelId && selectedRoundData?.roundNumber === round.roundNumber && 'bg-accent')}>
+                                      <TableRow key={index} onClick={() => {
+                                        // Switch to matches tab and select the round for the map view.
+                                        // Do NOT change the selected duel here; that would replace the match rounds table.
+                                        setActiveTab('matches');
+                                        setSelectedRoundData(round);
+                                      }} className={cn('cursor-pointer', selectedRoundData?.duelId === round.duelId && selectedRoundData?.roundNumber === round.roundNumber && 'bg-accent')}>
                                         <TableCell>{round.roundNumber}</TableCell>
                                         <TableCell>{round.myGuess.score}</TableCell>
                                         <TableCell>{round.opponentGuess.score}</TableCell>
