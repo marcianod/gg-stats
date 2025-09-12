@@ -69,7 +69,7 @@ export function MatchRoundsTable({ rounds, onRoundSelect, selectedRound }: Match
                 onClick={() => detail.roundData && onRoundSelect(detail.roundData)}
                 className={cn(
                     detail.roundData && 'cursor-pointer',
-                    selectedRound?.roundNumber === detail.roundNumber && 'bg-accent'
+                    selectedRound?.duelId === detail.roundData.duelId && selectedRound?.roundNumber === detail.roundNumber && 'bg-accent'
                 )}>
                 <TableCell className="font-medium">{detail.roundNumber}</TableCell>
                 <TableCell>{detail.country}</TableCell>

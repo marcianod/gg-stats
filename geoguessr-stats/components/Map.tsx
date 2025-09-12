@@ -106,13 +106,13 @@ function MapBounds({ roundData, selectedCountry, geoJson }: { roundData: RoundDa
   }, [map, roundData]);
 
   useEffect(() => {
-    if (selectedCountry && geoJson) {
+    if (selectedCountry && geoJson && !roundData) {
         const countryFeature = geoJson.features.find((feature: Feature<Geometry, CountryProperties>) => (feature.properties['ISO3166-1-Alpha-2'] as string).toLowerCase() === selectedCountry.countryCode);
         if (countryFeature) {
             const bounds = L.geoJSON(countryFeature).getBounds();
             map.fitBounds(bounds);
         }
-    } else if (!roundData) {
+    } else if (!roundData && !selectedCountry) {
         map.setView([20, 0], 2);
     }
   }, [map, selectedCountry, geoJson, roundData]);
