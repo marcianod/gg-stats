@@ -280,16 +280,16 @@ export default function StatsDashboard({ allDuels }: { allDuels: Duel[] }) {
                     : 'Select a match from the list to see its details.'}
                 </CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-4">
+            <CardContent>
                 {selectedDuel ? (
-                <div className="grid grid-rows-2 gap-4 h-[70vh]">
-                    <div>
+                <div className="flex flex-col h-[75vh]">
+                    <div className="h-96 w-full">
+                        <Map roundData={selectedRoundData} />
+                    </div>
+                    <div className="flex-grow overflow-y-auto">
                         <p>Final Score: {selectedDuel.myScore} - {selectedDuel.opponentScore}</p>
                         <p>Result: {selectedDuel.outcome}</p>
                         <MatchRoundsTable duel={selectedDuel} onRoundSelect={setSelectedRoundData} selectedRound={selectedRoundData} />
-                    </div>
-                    <div className="min-h-[30vh]">
-                        <Map roundData={selectedRoundData} />
                     </div>
                 </div>
                 ) : (
