@@ -425,13 +425,13 @@ export default function StatsDashboard() {
                         The Map component should ideally allow clicking on a country to select it.
                         If it does, it should call the `onCountrySelect` prop with the selected country's data.
                     */}
-                    <Map 
-                        activeTab={activeTab} 
-                        roundData={null} 
-                        geoJson={geoJsonData} 
-                        countryStats={countryStats} 
-                        selectedCountry={selectedCountry} 
-                        onCountrySelect={handleCountrySelect} />
+          <Map 
+            activeTab={activeTab} 
+            roundData={selectedRoundData} 
+            geoJson={geoJsonData} 
+            countryStats={countryStats} 
+            selectedCountry={selectedCountry} 
+            onCountrySelect={handleCountrySelect} />
                 </div>
                 <div className="flex-grow overflow-y-auto">
                     {selectedCountry ? (
