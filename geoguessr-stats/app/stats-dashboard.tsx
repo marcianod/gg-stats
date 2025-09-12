@@ -331,7 +331,7 @@ export default function StatsDashboard() {
   }
 
   return (
-    <div className="flex h-screen flex-col gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
+    <div className="flex flex-col gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
       <QueryBuilder setFilters={setFilters} />
       <div className="grid flex-1 items-start gap-4 overflow-hidden lg:grid-cols-3 xl:grid-cols-3">
         <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-1 h-full">
