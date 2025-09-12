@@ -15,7 +15,13 @@ interface Duel {
   gameId: string;
   created?: string;
   startTime?: string;
-  [key: string]: any;
+  options?: {
+    map?: {
+      name?: string;
+    };
+  };
+  // Using `unknown` is safer than `any` for other dynamic properties
+  [key: string]: unknown;
 }
 
 const STATS_FILE_PATH = path.join(process.cwd(), 'data', 'geoguessr_stats.json');
@@ -33,9 +39,14 @@ async function getStats(): Promise<Duel[]> {
     }
     const data = JSON.parse(fileContent);
     return Array.isArray(data) ? data.flat(Infinity) : [];
-  } catch (error: any) {
+  } catch (error: unknown) {
     // If the file doesn't exist, it's not an error for the first load.
-    if (error.code === 'ENOENT') {
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      error.code === 'ENOENT'
+    ) {
       console.log('Stats file not found. This is normal on first run.');
       return [];
     }
