@@ -21,6 +21,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import { type Duel, type ProcessedDuel, type RoundData, type GeoJson, type CountryData } from '@/lib/types'
 import { MatchRoundsTable } from './match-rounds-table'
+import { RecentMatchesTable } from './recent-matches-table'
+import { Button } from '@/components/ui/button'
+import { ArrowUpDown } from 'lucide-react'
 
 const Map = dynamic(() => import('../components/Map'), {
   ssr: false,
@@ -29,7 +32,64 @@ const Map = dynamic(() => import('../components/Map'), {
 // This should ideally be configurable by the user or from environment variables.
 const MY_PLAYER_ID = '608a7f9394d95300015224ac'
 
+type SortableCountryColumn = 'countryCode' | 'winRate' | 'avgScoreDelta' | 'totalRounds';
+
+interface CountrySortConfig {
+  key: SortableCountryColumn;
+  direction: 'ascending' | 'descending';
+}
+
 function CountryStatsTable({ stats, onCountrySelect, selectedCountry }: { stats: CountryData[], onCountrySelect: (countryCode: string) => void, selectedCountry: CountryData | null }) {
+    const [sortConfig, setSortConfig] = useState<CountrySortConfig>({ key: 'totalRounds', direction: 'descending' });
+
+    const sortedStats = useMemo(() => {
+        const sortableStats = [...stats];
+        if (sortConfig.key) {
+            sortableStats.sort((a, b) => {
+                let aValue: string | number;
+                let bValue: string | number;
+
+                switch (sortConfig.key) {
+                    case 'winRate':
+                        aValue = (a.wins / a.totalRounds) * 100;
+                        bValue = (b.wins / b.totalRounds) * 100;
+                        break;
+                    case 'avgScoreDelta':
+                        aValue = a.totalScoreDelta / a.totalRounds;
+                        bValue = b.totalScoreDelta / b.totalRounds;
+                        break;
+                    default:
+                        aValue = a[sortConfig.key];
+                        bValue = b[sortConfig.key];
+                }
+
+                if (aValue < bValue) {
+                    return sortConfig.direction === 'ascending' ? -1 : 1;
+                }
+                if (aValue > bValue) {
+                    return sortConfig.direction === 'ascending' ? 1 : -1;
+                }
+                return 0;
+            });
+        }
+        return sortableStats;
+    }, [stats, sortConfig]);
+
+    const requestSort = (key: SortableCountryColumn) => {
+        let direction: 'ascending' | 'descending' = 'ascending';
+        if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+            direction = 'descending';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const getSortIndicator = (column: SortableCountryColumn) => {
+        if (sortConfig.key !== column) {
+            return <ArrowUpDown className="ml-2 h-4 w-4" />;
+        }
+        return sortConfig.direction === 'ascending' ? ' 🔼' : ' 🔽';
+    };
+
     return (
         <Card>
             <CardHeader className="px-7">
@@ -42,17 +102,33 @@ function CountryStatsTable({ stats, onCountrySelect, selectedCountry }: { stats:
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Country</TableHead>
-                            <TableHead className="text-right">Win Rate</TableHead>
-                            <TableHead className="text-right">Avg. Score Δ</TableHead>
-                            <TableHead className="text-right">Total Rounds</TableHead>
+                            <TableHead>
+                                <Button variant="ghost" onClick={() => requestSort('countryCode')}>
+                                    Country{getSortIndicator('countryCode')}
+                                </Button>
+                            </TableHead>
+                            <TableHead className="text-right">
+                                <Button variant="ghost" onClick={() => requestSort('winRate')}>
+                                    Win Rate{getSortIndicator('winRate')}
+                                </Button>
+                            </TableHead>
+                            <TableHead className="text-right">
+                                <Button variant="ghost" onClick={() => requestSort('avgScoreDelta')}>
+                                    Avg. Score Δ{getSortIndicator('avgScoreDelta')}
+                                </Button>
+                            </TableHead>
+                            <TableHead className="text-right">
+                                <Button variant="ghost" onClick={() => requestSort('totalRounds')}>
+                                    Total Rounds{getSortIndicator('totalRounds')}
+                                </Button>
+                            </TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-            {stats.map((stat) => (
-              <TableRow 
-                key={stat.countryCode} 
-                onClick={() => onCountrySelect(stat.countryCode)}
+                        {sortedStats.map((stat) => (
+                            <TableRow
+                                key={stat.countryCode}
+                                onClick={() => onCountrySelect(stat.countryCode)}
                                 className={cn(
                                     'cursor-pointer',
                                     selectedCountry?.countryCode === stat.countryCode && 'bg-accent'
@@ -340,27 +416,9 @@ export default function StatsDashboard() {
                   games loaded)
                 </CardDescription>
               </CardHeader>
-              <CardContent className="flex flex-col gap-1">
+              <CardContent>
                 {processedDuels.length > 0 ? (
-                  processedDuels.map((duel) => (
-                    <button
-                      key={duel.gameId}
-                      onClick={() => handleDuelSelect(duel)}
-                      className={cn(
-                        'rounded-lg border bg-card p-3 text-left text-sm transition-all hover:bg-accent',
-                        selectedDuel?.gameId === duel.gameId && 'bg-accent'
-                      )}
-                    >
-                      <div className="flex items-center justify-between">
-                        <p className="font-semibold">
-                          {duel.options?.map?.name ?? 'Unknown Map'}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {duel.date.toLocaleDateString()}
-                        </p>
-                      </div>
-                    </button>
-                  ))
+                  <RecentMatchesTable duels={processedDuels} onDuelSelect={handleDuelSelect} selectedDuel={selectedDuel} />
                 ) : (
                   <p className="py-8 text-center text-sm text-muted-foreground">
                     No duels found.
