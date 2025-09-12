@@ -24,7 +24,16 @@ import { MatchRoundsTable } from './match-rounds-table'
 // This should be configured by the user. I've taken it from your old project.
 const MY_PLAYER_ID = '608a7f9394d95300015224ac'
 
-function CountryStatsTable({ stats }: { stats: { countryCode: string; wins: number; losses: number; draws: number; totalRounds: number; totalScoreDelta: number; }[] }) {
+type CountryData = {
+    countryCode: string;
+    wins: number;
+    losses: number;
+    draws: number;
+    totalRounds: number;
+    totalScoreDelta: number;
+};
+
+function CountryStatsTable({ stats, onCountrySelect, selectedCountry }: { stats: CountryData[], onCountrySelect: (country: CountryData) => void, selectedCountry: CountryData | null }) {
     return (
         <Card>
             <CardHeader className="px-7">
@@ -45,7 +54,13 @@ function CountryStatsTable({ stats }: { stats: { countryCode: string; wins: numb
                     </TableHeader>
                     <TableBody>
                         {stats.map((stat) => (
-                            <TableRow key={stat.countryCode}>
+                            <TableRow 
+                                key={stat.countryCode} 
+                                onClick={() => onCountrySelect(stat)}
+                                className={cn(
+                                    'cursor-pointer',
+                                    selectedCountry?.countryCode === stat.countryCode && 'bg-accent'
+                                )}>
                                 <TableCell>{stat.countryCode.toUpperCase()}</TableCell>
                                 <TableCell className="text-right">
                                     {`${((stat.wins / stat.totalRounds) * 100).toFixed(1)}%`}
@@ -64,7 +79,18 @@ function CountryStatsTable({ stats }: { stats: { countryCode: string; wins: numb
 }
 
 export default function StatsDashboard({ allDuels }: { allDuels: Duel[] }) {
+  const [activeTab, setActiveTab] = useState('matches');
   const [selectedDuel, setSelectedDuel] = useState<ProcessedDuel | null>(null)
+  const [selectedCountry, setSelectedCountry] = useState<CountryData | null>(null);
+
+  const handleTabChange = (value: string) => {
+      setActiveTab(value);
+      if (value === 'countries') {
+        setSelectedDuel(null);
+      } else {
+        setSelectedCountry(null);
+      }
+    };
 
   const processedDuels = useMemo(() => {
     return allDuels
@@ -120,7 +146,7 @@ export default function StatsDashboard({ allDuels }: { allDuels: Duel[] }) {
       .sort((a, b) => b.date.getTime() - a.date.getTime())
   }, [allDuels])
 
-  const countryStats = useMemo(() => {
+  const countryStats: CountryData[] = useMemo(() => {
     const stats: Record<string, {
         wins: number;
         losses: number;
@@ -176,14 +202,14 @@ export default function StatsDashboard({ allDuels }: { allDuels: Duel[] }) {
   }, [processedDuels]);
 
   // Select the most recent duel by default
-  if (!selectedDuel && processedDuels.length > 0) {
+  if (!selectedDuel && processedDuels.length > 0 && activeTab === 'matches') {
     setSelectedDuel(processedDuels[0]);
   }
 
   return (
     <div className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8 lg:grid-cols-3 xl:grid-cols-3">
       <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-1">
-        <Tabs defaultValue="matches">
+        <Tabs defaultValue="matches" onValueChange={handleTabChange}>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="matches">Recent Matches</TabsTrigger>
             <TabsTrigger value="countries">By Country</TabsTrigger>
@@ -227,34 +253,61 @@ export default function StatsDashboard({ allDuels }: { allDuels: Duel[] }) {
             </Card>
           </TabsContent>
            <TabsContent value="countries">
-            <CountryStatsTable stats={countryStats} />
+            <CountryStatsTable stats={countryStats} onCountrySelect={setSelectedCountry} selectedCountry={selectedCountry} />
           </TabsContent>
         </Tabs>
       </div>
       <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
-        <Card className="min-h-[60vh]">
-          <CardHeader>
-            <CardTitle>Match Details</CardTitle>
-            <CardDescription>
-              {selectedDuel
-                ? selectedDuel.options?.map?.name ?? 'Unknown Map'
-                : 'Select a match from the list to see its details.'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {selectedDuel ? (
-              <div>
-                <p>Final Score: {selectedDuel.myScore} - {selectedDuel.opponentScore}</p>
-                <p>Result: {selectedDuel.outcome}</p>
-                <MatchRoundsTable duel={selectedDuel} />
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Details will appear here.
-              </p>
-            )}
-          </CardContent>
-        </Card>
+        {activeTab === 'matches' && (
+            <Card className="min-h-[60vh]">
+            <CardHeader>
+                <CardTitle>Match Details</CardTitle>
+                <CardDescription>
+                {selectedDuel
+                    ? selectedDuel.options?.map?.name ?? 'Unknown Map'
+                    : 'Select a match from the list to see its details.'}
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                {selectedDuel ? (
+                <div>
+                    <p>Final Score: {selectedDuel.myScore} - {selectedDuel.opponentScore}</p>
+                    <p>Result: {selectedDuel.outcome}</p>
+                    <MatchRoundsTable duel={selectedDuel} />
+                </div>
+                ) : (
+                <p className="text-sm text-muted-foreground">
+                    Details will appear here.
+                </p>
+                )}
+            </CardContent>
+            </Card>
+        )}
+        {activeTab === 'countries' && (
+            <Card>
+            <CardHeader>
+                <CardTitle>Country Details</CardTitle>
+                <CardDescription>
+                {selectedCountry
+                    ? `Stats for ${selectedCountry.countryCode.toUpperCase()}`
+                    : 'Select a country to see details.'}
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                {selectedCountry ? (
+                <div>
+                    <p>Win Rate: {((selectedCountry.wins / selectedCountry.totalRounds) * 100).toFixed(1)}%</p>
+                    <p>Avg. Score Δ: {(selectedCountry.totalScoreDelta / selectedCountry.totalRounds).toFixed(0)}</p>
+                    <p>Total Rounds: {selectedCountry.totalRounds}</p>
+                </div>
+                ) : (
+                <p className="text-sm text-muted-foreground">
+                    Details will appear here.
+                </p>
+                )}
+            </CardContent>
+            </Card>
+        )}
       </div>
     </div>
   )
