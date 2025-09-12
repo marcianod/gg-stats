@@ -452,7 +452,7 @@ export default function StatsDashboard() {
                                     </TableHeader>
                                     <TableBody>
                                     {selectedCountryRounds.map((round, index) => (
-                                      <TableRow key={index} onClick={() => setSelectedRoundData(round)} className={cn('cursor-pointer', selectedRoundData?.duelId === round.duelId && selectedRoundData?.roundNumber === round.roundNumber && 'bg-accent')}>
+                                      <TableRow key={index} onClick={() => { setActiveTab('matches'); setSelectedRoundData(round); }} className={cn('cursor-pointer', selectedRoundData?.duelId === round.duelId && selectedRoundData?.roundNumber === round.roundNumber && 'bg-accent')}>
                                         <TableCell>{round.roundNumber}</TableCell>
                                         <TableCell>{round.myGuess.score}</TableCell>
                                         <TableCell>{round.opponentGuess.score}</TableCell>
@@ -476,8 +476,7 @@ export default function StatsDashboard() {
         )}
       </div>
     </div>
-    {selectedRoundData && <RoundModal round={selectedRoundData} onClose={() => setSelectedRoundData(null)} />}
-    </>
+  </>
   )
 }
 
@@ -485,29 +484,4 @@ export default function StatsDashboard() {
 // (we can't render from inside the function after return without refactor, so consumers import this file's default
 // export which controls state and modal rendering via _RoundModalRenderer below)
 
-    function RoundModal({ round, onClose }: { round: RoundData; onClose: () => void }) {
-      if (!round) return null;
-      return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-          <div className="relative z-10 w-full max-w-4xl bg-white rounded shadow-lg p-4">
-            <div className="flex items-center justify-between mb-2">
-              <div>
-                <h3 className="font-semibold">Round {round.roundNumber} — {round.countryCode?.toUpperCase()}</h3>
-                <p className="text-sm text-muted-foreground">{round.date.toLocaleString()}</p>
-              </div>
-              <button className="text-red-500" onClick={onClose}>Close</button>
-            </div>
-            <div className="h-96 w-full">
-              <Map activeTab="matches" roundData={round} geoJson={null} countryStats={[]} selectedCountry={null} onCountrySelect={() => {}} />
-            </div>
-            <div className="mt-3">
-              <MatchRoundsTable rounds={[round]} onRoundSelect={() => {}} selectedRound={null} />
-            </div>
-          </div>
-        </div>
-      )
-    }
-
-// Render modal when a round is selected
-// (modal renderer removed)
+// (modal removed; clicking a round now activates the Matches tab and selects the round)
