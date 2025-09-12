@@ -53,6 +53,7 @@ export interface ProcessedDuel extends Duel {
   myScore: number;
   opponentScore: number;
   outcome: "Win" | "Loss" | "Draw" | "Unknown";
+  rounds: RoundData[]; // Added this line
 }
 
 export interface RoundData {

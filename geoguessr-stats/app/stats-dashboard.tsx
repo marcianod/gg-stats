@@ -26,7 +26,7 @@ const Map = dynamic(() => import('../components/Map'), {
   ssr: false,
 })
 
-// This should be configured by the user. I've taken it from your old project.
+// This should ideally be configurable by the user or from environment variables.
 const MY_PLAYER_ID = '608a7f9394d95300015224ac'
 
 function CountryStatsTable({ stats, onCountrySelect, selectedCountry }: { stats: CountryData[], onCountrySelect: (country: CountryData) => void, selectedCountry: CountryData | null }) {
@@ -101,7 +101,7 @@ export default function StatsDashboard() {
           throw new Error(`HTTP error! status: ${geoJsonReponse.status} for countries.geojson`);
         }
 
-        const duelsData: Duel[] = await duelsResponse.json();
+        const duelsData: any = await duelsResponse.json();
         const geoJson: GeoJson = await geoJsonReponse.json();
 
         setDuels(duelsData.flat(Infinity)); // Flatten the duels array
@@ -115,41 +115,28 @@ export default function StatsDashboard() {
     };
 
     fetchData();
-  }, []);
+  }, []); // Consider adding more specific error handling for network issues or JSON parsing failures.
 
   const handleTabChange = (value: string) => {
       setActiveTab(value);
       if (value === 'countries') {
         setSelectedDuel(null);
         setSelectedRoundData(null);
-      } else {
+      } else { // value === 'matches'
         setSelectedCountry(null);
+        setSelectedCountryRounds(null); // Reset selectedCountryRounds
       }
     };
 
   const handleDuelSelect = (duel: ProcessedDuel) => {
     setSelectedDuel(duel);
     setSelectedRoundData(null);
+    setSelectedCountry(null); // Reset selected country when a duel is selected
   }
 
   const handleCountrySelect = (country: CountryData) => {
     setSelectedCountry(country);
-    const roundsForCountry: RoundData[] = [];
-    processedDuels.forEach(duel => {
-      duel.rounds?.forEach(round => {
-        if (round.panorama?.countryCode?.toLowerCase() === country.countryCode) {
-          // Need to transform the round data to RoundData type
-          // This is a simplified version, you might need more data from the original round
-          roundsForCountry.push({
-            actual: { lat: round.panorama.lat, lng: round.panorama.lng },
-            myGuess: { lat: duel.teams?.[0]?.players?.[0]?.guesses?.find(g => g.roundNumber === round.roundNumber)?.lat || 0, lng: duel.teams?.[0]?.players?.[0]?.guesses?.find(g => g.roundNumber === round.roundNumber)?.lng || 0 },
-            opponentGuess: { lat: duel.teams?.[1]?.players?.[0]?.guesses?.find(g => g.roundNumber === round.roundNumber)?.lat || 0, lng: duel.teams?.[1]?.players?.[0]?.guesses?.find(g => g.roundNumber === round.roundNumber)?.lng || 0 },
-            roundNumber: round.roundNumber,
-          });
-        }
-      });
-    });
-    setSelectedCountryRounds(roundsForCountry);
+    setSelectedCountryRounds(country.rounds);
   };
 
   const processedDuels = useMemo(() => {
@@ -179,15 +166,27 @@ export default function StatsDashboard() {
           return null
         }
 
-        const myScore = meTeam.players[0].guesses.reduce((sum, g) => sum + g.score, 0)
-        const opponentScore = opponentTeam.players[0].guesses.reduce((sum, g) => sum + g.score, 0)
+        const mePlayer = meTeam.players[0];
+        const opponentPlayer = opponentTeam.players[0];
 
-        const result =
-          duel.result?.winningTeamId === meTeam.id
-            ? 'Win'
-            : duel.result?.winningTeamId
-            ? 'Loss'
-            : 'Draw'
+        const myScore = mePlayer.guesses.reduce((sum, g) => sum + g.score, 0)
+        const opponentScore = opponentPlayer.guesses.reduce((sum, g) => sum + g.score, 0)
+
+        let outcome: ProcessedDuel['outcome'] = 'Unknown';
+        if (duel.result?.winningTeamId) {
+            if (duel.result.winningTeamId === meTeam.id) {
+                outcome = 'Win';
+            } else {
+                outcome = 'Loss';
+            }
+        } else {
+            // If no winningTeamId, it could be a draw or simply not finished/unknown
+            if (myScore === opponentScore) {
+                outcome = 'Draw';
+            } else {
+                outcome = 'Unknown';
+            }
+        }
 
         // The date is more reliable from the first round's startTime
         const gameDate = duel.rounds?.[0]?.startTime
@@ -198,8 +197,8 @@ export default function StatsDashboard() {
           date: new Date(gameDate || 0),
           myScore, // This is already a number
           opponentScore,
-          outcome: result, // Renamed 'result' to 'outcome' to match ProcessedDuel type
-          rounds: duel.rounds.map((round, index) => {
+          outcome: outcome,
+          rounds: duel.rounds && duel.rounds.map((round, index) => {
             const mePlayer = meTeam.players[0];
             const opponentPlayer = opponentTeam.players[0];
             const myGuess = mePlayer.guesses.find(g => g.roundNumber === round.roundNumber);
@@ -228,7 +227,8 @@ export default function StatsDashboard() {
         return processedDuel;
       })
       .filter((d): d is ProcessedDuel => d !== null)
-      .sort((a, b) => b.date.getTime() - a.date.getTime())
+      .sort((a, b) => b.date.getTime() - a.date.getTime());
+  }, [duels]);
 
   const countryStats: CountryData[] = useMemo(() => {
     const stats: Record<string, {
@@ -237,6 +237,7 @@ export default function StatsDashboard() {
         draws: number;
         totalRounds: number;
         totalScoreDelta: number;
+        rounds: RoundData[];
     }> = {};
 
     processedDuels.forEach((duel) => {
@@ -247,8 +248,8 @@ export default function StatsDashboard() {
 
       if (!myPlayer || !opponentPlayer) return;
 
-      duel.rounds.forEach((round, index) => {
-        const countryCode = round.panorama?.countryCode;
+      duel.rounds.forEach((round) => {
+        const countryCode = round.panorama?.countryCode?.toLowerCase();
         if (!countryCode) return;
 
         if (!stats[countryCode]) {
@@ -258,12 +259,13 @@ export default function StatsDashboard() {
             draws: 0,
             totalRounds: 0,
             totalScoreDelta: 0,
+            rounds: [],
           };
         }
 
         stats[countryCode].totalRounds++;
-        const myGuess = myPlayer.guesses[index];
-        const opponentGuess = opponentPlayer.guesses[index];
+        const myGuess = myPlayer.guesses.find(g => g.roundNumber === round.roundNumber);
+        const opponentGuess = opponentPlayer.guesses.find(g => g.roundNumber === round.roundNumber);
 
         if (myGuess && opponentGuess) {
             const scoreDelta = myGuess.score - opponentGuess.score;
@@ -275,6 +277,23 @@ export default function StatsDashboard() {
             } else {
                 stats[countryCode].draws++;
             }
+
+            // Add the round data to the country stats
+            stats[countryCode].rounds.push({
+                actual: { lat: round.panorama?.lat || 0, lng: round.panorama?.lng || 0, heading: round.panorama?.heading, pitch: round.panorama?.pitch, zoom: round.panorama?.zoom },
+                myGuess: { lat: myGuess.lat || 0, lng: myGuess.lng || 0, score: myGuess.score || 0, distance: myGuess.distance || 0, time: myGuess.time || 0 },
+                opponentGuess: { lat: opponentGuess.lat || 0, lng: opponentGuess.lng || 0, score: opponentGuess.score || 0, distance: opponentGuess.distance || 0, time: opponentGuess.time || 0 },
+                roundNumber: round.roundNumber,
+                countryCode: countryCode,
+                duelId: duel.gameId,
+                myPlayerId: myPlayer.playerId,
+                opponentPlayerId: opponentPlayer.playerId,
+                date: new Date(round.startTime),
+                won: (myGuess.score || 0) > (opponentGuess.score || 0),
+                scoreDelta: scoreDelta,
+                distDelta: (myGuess.distance || 0) - (opponentGuess.distance || 0),
+                timeDelta: (myGuess.time || 0) - (opponentGuess.time || 0),
+            });
         }
       });
     });
@@ -282,14 +301,14 @@ export default function StatsDashboard() {
     return Object.entries(stats).map(([countryCode, data]) => ({
         countryCode,
         ...data,
-        rounds: processedDuels.flatMap(duel => duel.rounds.filter(round => round.countryCode === countryCode))
     }));
   }, [processedDuels]);
 
-  // Select the most recent duel by default
-  if (!selectedDuel && processedDuels.length > 0 && activeTab === 'matches') {
-    setSelectedDuel(processedDuels[0]);
-  }
+  useEffect(() => {
+    if (!selectedDuel && processedDuels.length > 0 && activeTab === 'matches') {
+      setSelectedDuel(processedDuels[0]);
+    }
+  }, [processedDuels, activeTab, selectedDuel]);
 
   if (loading) {
     return <div className="flex min-h-screen items-center justify-center">Loading data...</div>;
@@ -365,6 +384,10 @@ export default function StatsDashboard() {
                 {selectedDuel ? (
                 <div className="flex flex-col h-[75vh]">
                     <div className="h-96 w-full">
+                                                {/* 
+                            The Map component should ideally allow clicking on a country to select it.
+                            If it does, it should call the `onCountrySelect` prop with the selected country's data.
+                        */}
                         <Map activeTab={activeTab} roundData={selectedRoundData} geoJson={geoJsonData} countryStats={countryStats} selectedCountry={selectedCountry} onCountrySelect={handleCountrySelect} />
                     </div>
                     <div className="flex-grow overflow-y-auto">
@@ -393,6 +416,10 @@ export default function StatsDashboard() {
             </CardHeader>
             <CardContent className="flex flex-col h-[75vh]">
                 <div className="h-96 w-full">
+                                        {/* 
+                        The Map component should ideally allow clicking on a country to select it.
+                        If it does, it should call the `onCountrySelect` prop with the selected country's data.
+                    */}
                     <Map 
                         activeTab={activeTab} 
                         roundData={null} 
@@ -407,6 +434,34 @@ export default function StatsDashboard() {
                         <p>Win Rate: {((selectedCountry.wins / selectedCountry.totalRounds) * 100).toFixed(1)}%</p>
                         <p>Avg. Score Δ: {(selectedCountry.totalScoreDelta / selectedCountry.totalRounds).toFixed(0)}</p>
                         <p>Total Rounds: {selectedCountry.totalRounds}</p>
+
+                        {selectedCountryRounds && selectedCountryRounds.length > 0 && (
+                            <div className="mt-4">
+                                <h3 className="text-lg font-semibold mb-2">Rounds for {selectedCountry.countryCode.toUpperCase()}</h3>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Round</TableHead>
+                                            <TableHead>My Score</TableHead>
+                                            <TableHead>Opponent Score</TableHead>
+                                            <TableHead>Score Δ</TableHead>
+                                            <TableHead>Date</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {selectedCountryRounds.map((round, index) => (
+                                            <TableRow key={index}>
+                                                <TableCell>{round.roundNumber}</TableCell>
+                                                <TableCell>{round.myGuess.score}</TableCell>
+                                                <TableCell>{round.opponentGuess.score}</TableCell>
+                                                <TableCell>{round.scoreDelta}</TableCell>
+                                                <TableCell>{round.date.toLocaleDateString()}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        )}
                     </div>
                     ) : (
                     <p className="text-sm text-muted-foreground">
@@ -421,4 +476,3 @@ export default function StatsDashboard() {
     </div>
   )
 }
-// End of file
