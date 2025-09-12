@@ -53,7 +53,7 @@ function ChoroplethLayer({ geoJson, countryStats, onCountrySelect, selectedCount
             return {};
         }
         const properties = feature.properties as CountryProperties;
-        const countryCode = properties['ISO3166-1-Alpha-2'] as string;
+        const countryCode = (properties['ISO3166-1-Alpha-2'] as string).toLowerCase();
         const stats = countryStats.find(c => c.countryCode === countryCode);
         const winRate = stats ? (stats.wins / stats.totalRounds) * 100 : undefined;
         return {
@@ -70,7 +70,7 @@ function ChoroplethLayer({ geoJson, countryStats, onCountrySelect, selectedCount
             return;
         }
         const properties = feature.properties as CountryProperties;
-        const countryCode = properties['ISO3166-1-Alpha-2'] as string;
+        const countryCode = (properties['ISO3166-1-Alpha-2'] as string).toLowerCase();
         layer.on({
             click: () => onCountrySelect(countryCode)
         });
@@ -107,7 +107,7 @@ function MapBounds({ roundData, selectedCountry, geoJson }: { roundData: RoundDa
 
   useEffect(() => {
     if (selectedCountry && geoJson) {
-        const countryFeature = geoJson.features.find((feature: Feature<Geometry, CountryProperties>) => feature.properties['ISO3166-1-Alpha-2'] === selectedCountry.countryCode);
+        const countryFeature = geoJson.features.find((feature: Feature<Geometry, CountryProperties>) => (feature.properties['ISO3166-1-Alpha-2'] as string).toLowerCase() === selectedCountry.countryCode);
         if (countryFeature) {
             const bounds = L.geoJSON(countryFeature).getBounds();
             map.fitBounds(bounds);
