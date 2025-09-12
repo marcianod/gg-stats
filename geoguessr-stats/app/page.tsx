@@ -1,7 +1,7 @@
 import fs from 'fs/promises'
 import path from 'path'
 import StatsDashboard from './stats-dashboard'
-import { type Duel } from '@/lib/types'
+import { type Duel } from '../lib/types'
 
 const STATS_FILE_PATH = path.join(process.cwd(), 'data', 'geoguessr_stats.json');
 

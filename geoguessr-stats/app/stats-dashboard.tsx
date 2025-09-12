@@ -18,7 +18,7 @@ const MY_PLAYER_ID = '608a7f9394d95300015224ac'
 export default function StatsDashboard({ allDuels }: { allDuels: Duel[] }) {
   const [selectedDuel, setSelectedDuel] = useState<ProcessedDuel | null>(null)
 
-  const processedDuels = useMemo<ProcessedDuel[]>(() => {
+  const processedDuels = useMemo(() => {
     return allDuels
       .map((duel) => {
         if (!duel.teams || duel.teams.length < 2 || !duel.rounds || duel.rounds.length === 0) {
@@ -52,9 +52,9 @@ export default function StatsDashboard({ allDuels }: { allDuels: Duel[] }) {
         return {
           ...duel,
           date: new Date(gameDate || 0),
-          myScore,
+          myScore, // This is already a number
           opponentScore,
-          result,
+          outcome: result, // Renamed 'result' to 'outcome' to match ProcessedDuel type
         }
       })
       .filter((d): d is ProcessedDuel => d !== null)
@@ -128,7 +128,7 @@ export default function StatsDashboard({ allDuels }: { allDuels: Duel[] }) {
             {selectedDuel ? (
               <div>
                 <p>Final Score: {selectedDuel.myScore} - {selectedDuel.opponentScore}</p>
-                <p>Result: {selectedDuel.result}</p>
+                <p>Result: {selectedDuel.outcome}</p>
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
