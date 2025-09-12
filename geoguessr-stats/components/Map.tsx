@@ -127,7 +127,7 @@ export default function Map(props: MapProps) {
         url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
       />
-      {props.activeTab === 'matches' && props.roundData && (
+  {props.roundData && (
         <>
           <Marker position={props.roundData.actual} icon={correctLocationIcon} />
           <Marker position={props.roundData.myGuess} icon={myIcon} />

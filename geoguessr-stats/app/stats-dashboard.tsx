@@ -456,9 +456,7 @@ export default function StatsDashboard() {
                                     <TableBody>
                                     {selectedCountryRounds.map((round, index) => (
                                       <TableRow key={index} onClick={() => {
-                                        // Switch to matches tab and select the round for the map view.
-                                        // Do NOT change the selected duel here; that would replace the match rounds table.
-                                        setActiveTab('matches');
+                                        // Only select the round — do not switch tabs or clear the right panel.
                                         setSelectedRoundData(round);
                                       }} className={cn('cursor-pointer', selectedRoundData?.duelId === round.duelId && selectedRoundData?.roundNumber === round.roundNumber && 'bg-accent')}>
                                         <TableCell>{round.roundNumber}</TableCell>
