@@ -10,55 +10,7 @@ import {
 } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
-
-interface Guess {
-  roundNumber: number
-  score: number
-  [key: string]: unknown
-}
-
-interface Player {
-  id: string
-  playerId: string
-  guesses: Guess[]
-  // The API doesn't provide totalScore directly on the player object.
-  // It's better to calculate it.
-}
-
-interface Team {
-  id: string
-  players: Player[]
-}
-
-interface Round {
-  roundNumber: number
-  startTime: string
-  [key: string]: unknown
-}
-
-interface Duel {
-  gameId: string
-  // created/startTime are not consistently at the top level.
-  rounds?: Round[]
-  options?: {
-    map?: {
-      name?: string
-    }
-  }
-  teams?: Team[]
-  result?: {
-    winningTeamId?: string
-  }
-  [key: string]: unknown
-}
-
-// A new type for our processed duel data
-interface ProcessedDuel extends Duel {
-  date: Date
-  myScore: number
-  opponentScore: number
-  result: 'Win' | 'Loss' | 'Draw' | 'Unknown'
-}
+import { type Duel, type ProcessedDuel } from '@/lib/types'
 
 // This should be configured by the user. I've taken it from your old project.
 const MY_PLAYER_ID = '608a7f9394d95300015224ac'

@@ -1,40 +1,7 @@
 import fs from 'fs/promises'
 import path from 'path'
 import StatsDashboard from './stats-dashboard'
-
-// Define a type for the duel object for consistency with the API route
-interface Player {
-  id: string
-  playerId: string
-  // totalScore is not in the raw data, it's calculated client-side.
-}
-
-interface Team {
-  id: string
-  players: Player[]
-}
-
-interface Round {
-  startTime: string
-  [key: string]: unknown
-}
-
-interface Duel {
-  gameId: string
-  // created/startTime are not consistently at the top level.
-  rounds?: Round[]
-  options?: {
-    map?: {
-      name?: string
-    }
-  }
-  teams?: Team[]
-  result?: {
-    winningTeamId?: string
-  }
-  // Using `unknown` is safer than `any` for other dynamic properties
-  [key: string]: unknown
-}
+import { type Duel } from '@/lib/types'
 
 const STATS_FILE_PATH = path.join(process.cwd(), 'data', 'geoguessr_stats.json');
 
