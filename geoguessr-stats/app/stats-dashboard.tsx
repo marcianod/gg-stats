@@ -89,8 +89,8 @@ export default function StatsDashboard() {
     const fetchData = async () => {
       try {
         const [duelsResponse, geoJsonReponse] = await Promise.all([
-          fetch('/data/geoguessr_stats.json'),
-          fetch('/data/countries.geojson'),
+          fetch('/geoguessr_stats.json'),
+          fetch('/countries.geojson'),
         ]);
 
         if (!duelsResponse.ok) {
