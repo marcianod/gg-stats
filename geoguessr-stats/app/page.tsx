@@ -48,6 +48,13 @@ export default async function HomePage() {
   // As a Server Component, we can directly read from the filesystem.
   const allDuels = await getStats();
 
+  // Sort duels by date, newest first
+  allDuels.sort((a, b) => {
+    const dateA = new Date(a.created ?? a.startTime ?? 0).getTime();
+    const dateB = new Date(b.created ?? b.startTime ?? 0).getTime();
+    return dateB - dateA;
+  });
+
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/40">
       <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 py-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
@@ -69,16 +76,30 @@ export default async function HomePage() {
                     games loaded)
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  {/* Placeholder for the list of matches */}
-                  <div className="flex flex-col gap-2">
-                    <div className="rounded-lg border bg-card p-3 text-sm">
-                      Placeholder Match 1
-                    </div>
-                    <div className="rounded-lg border bg-card p-3 text-sm text-muted-foreground">
-                      Placeholder Match 2
-                    </div>
-                  </div>
+                <CardContent className="flex flex-col gap-3">
+                  {allDuels.length > 0 ? (
+                    allDuels.map((duel) => (
+                      <div
+                        key={duel.gameId}
+                        className="rounded-lg border bg-card p-3 text-sm transition-colors hover:bg-muted/50"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold">
+                            {duel.options?.map?.name ?? 'Unknown Map'}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(
+                              duel.created ?? duel.startTime!
+                            ).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="py-8 text-center text-sm text-muted-foreground">
+                      No duels found.
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
