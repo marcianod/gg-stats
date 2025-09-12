@@ -363,7 +363,7 @@ export default function StatsDashboard() {
                 roundNumber: round.roundNumber,
                 countryCode: countryCode,
                 duelId: duel.gameId,
-                myPlayerId: mePlayer.playerId,
+                myPlayerId: myPlayer.playerId,
                 opponentPlayerId: opponentPlayer.playerId,
                 date: new Date(round.date),
                 won: (myGuess.score ?? 0) > (opponentGuess.score ?? 0),
