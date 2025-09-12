@@ -8,6 +8,14 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import { type Duel, type ProcessedDuel } from '@/lib/types'
@@ -15,6 +23,45 @@ import { MatchRoundsTable } from './match-rounds-table'
 
 // This should be configured by the user. I've taken it from your old project.
 const MY_PLAYER_ID = '608a7f9394d95300015224ac'
+
+function CountryStatsTable({ stats }: { stats: { countryCode: string; wins: number; losses: number; draws: number; totalRounds: number; totalScoreDelta: number; }[] }) {
+    return (
+        <Card>
+            <CardHeader className="px-7">
+                <CardTitle>Stats By Country</CardTitle>
+                <CardDescription>
+                    Aggregated statistics for each country.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Country</TableHead>
+                            <TableHead className="text-right">Win Rate</TableHead>
+                            <TableHead className="text-right">Avg. Score Δ</TableHead>
+                            <TableHead className="text-right">Total Rounds</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {stats.map((stat) => (
+                            <TableRow key={stat.countryCode}>
+                                <TableCell>{stat.countryCode.toUpperCase()}</TableCell>
+                                <TableCell className="text-right">
+                                    {`${((stat.wins / stat.totalRounds) * 100).toFixed(1)}%`}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                    {`${(stat.totalScoreDelta / stat.totalRounds).toFixed(0)}`}
+                                </TableCell>
+                                <TableCell className="text-right">{stat.totalRounds}</TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
+    );
+}
 
 export default function StatsDashboard({ allDuels }: { allDuels: Duel[] }) {
   const [selectedDuel, setSelectedDuel] = useState<ProcessedDuel | null>(null)
@@ -73,6 +120,61 @@ export default function StatsDashboard({ allDuels }: { allDuels: Duel[] }) {
       .sort((a, b) => b.date.getTime() - a.date.getTime())
   }, [allDuels])
 
+  const countryStats = useMemo(() => {
+    const stats: Record<string, {
+        wins: number;
+        losses: number;
+        draws: number;
+        totalRounds: number;
+        totalScoreDelta: number;
+    }> = {};
+
+    processedDuels.forEach((duel) => {
+      if (!duel.rounds) return;
+
+      const myPlayer = duel.teams?.find(team => team.players.some(p => p.isMe))?.players[0];
+      const opponentPlayer = duel.teams?.find(team => !team.players.some(p => p.isMe))?.players[0];
+
+      if (!myPlayer || !opponentPlayer) return;
+
+      duel.rounds.forEach((round, index) => {
+        const countryCode = round.panorama?.countryCode;
+        if (!countryCode) return;
+
+        if (!stats[countryCode]) {
+          stats[countryCode] = {
+            wins: 0,
+            losses: 0,
+            draws: 0,
+            totalRounds: 0,
+            totalScoreDelta: 0,
+          };
+        }
+
+        stats[countryCode].totalRounds++;
+        const myGuess = myPlayer.guesses[index];
+        const opponentGuess = opponentPlayer.guesses[index];
+
+        if (myGuess && opponentGuess) {
+            const scoreDelta = myGuess.score - opponentGuess.score;
+            stats[countryCode].totalScoreDelta += scoreDelta;
+            if (myGuess.score > opponentGuess.score) {
+                stats[countryCode].wins++;
+            } else if (myGuess.score < opponentGuess.score) {
+                stats[countryCode].losses++;
+            } else {
+                stats[countryCode].draws++;
+            }
+        }
+      });
+    });
+
+    return Object.entries(stats).map(([countryCode, data]) => ({
+        countryCode,
+        ...data
+    }));
+  }, [processedDuels]);
+
   // Select the most recent duel by default
   if (!selectedDuel && processedDuels.length > 0) {
     setSelectedDuel(processedDuels[0]);
@@ -123,6 +225,9 @@ export default function StatsDashboard({ allDuels }: { allDuels: Duel[] }) {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+           <TabsContent value="countries">
+            <CountryStatsTable stats={countryStats} />
           </TabsContent>
         </Tabs>
       </div>
