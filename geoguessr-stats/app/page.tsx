@@ -1,34 +1,39 @@
-import fs from 'fs/promises';
-import path from 'path';
-import StatsDashboard from './stats-dashboard';
+import fs from 'fs/promises'
+import path from 'path'
+import StatsDashboard from './stats-dashboard'
 
 // Define a type for the duel object for consistency with the API route
 interface Player {
-  id: string;
-  playerId: string;
-  totalScore: number;
+  id: string
+  playerId: string
+  // totalScore is not in the raw data, it's calculated client-side.
 }
 
 interface Team {
-  id: string;
-  players: Player[];
+  id: string
+  players: Player[]
+}
+
+interface Round {
+  startTime: string
+  [key: string]: unknown
 }
 
 interface Duel {
-  gameId: string;
-  created?: string;
-  startTime?: string;
+  gameId: string
+  // created/startTime are not consistently at the top level.
+  rounds?: Round[]
   options?: {
     map?: {
-      name?: string;
-    };
-  };
-  teams?: Team[];
+      name?: string
+    }
+  }
+  teams?: Team[]
   result?: {
-    winningTeamId?: string;
-  };
+    winningTeamId?: string
+  }
   // Using `unknown` is safer than `any` for other dynamic properties
-  [key: string]: unknown;
+  [key: string]: unknown
 }
 
 const STATS_FILE_PATH = path.join(process.cwd(), 'data', 'geoguessr_stats.json');
@@ -41,11 +46,9 @@ async function getStats(): Promise<Duel[]> {
   try {
     const fileContent = await fs.readFile(STATS_FILE_PATH, 'utf-8');
     // Handle empty file gracefully to prevent JSON parsing errors
-    if (!fileContent || fileContent.trim() === '') {
-      return [];
-    }
-    const data = JSON.parse(fileContent);
-    return Array.isArray(data) ? data.flat(Infinity) : [];
+    if (!fileContent || fileContent.trim() === '') return []
+    const data = JSON.parse(fileContent)
+    return Array.isArray(data) ? data.flat(Infinity) : []
   } catch (error: unknown) {
     // If the file doesn't exist, it's not an error for the first load.
     if (
@@ -54,24 +57,20 @@ async function getStats(): Promise<Duel[]> {
       'code' in error &&
       error.code === 'ENOENT'
     ) {
-      console.log('Stats file not found. This is normal on first run.');
-      return [];
+      console.log('Stats file not found. This is normal on first run.')
+      return []
     }
-    console.error('Error reading stats file for page:', error);
-    return []; // Return empty array for other errors
+    console.error('Error reading stats file for page:', error)
+    return [] // Return empty array for other errors
   }
 }
 
 export default async function HomePage() {
   // As a Server Component, we can directly read from the filesystem.
-  const allDuels = await getStats();
-
-  // Sort duels by date, newest first
-  allDuels.sort((a, b) => {
-    const dateA = new Date(a.created ?? a.startTime ?? 0).getTime();
-    const dateB = new Date(b.created ?? b.startTime ?? 0).getTime();
-    return dateB - dateA;
-  });
+  const allDuels = await getStats()
+  
+  // Sorting is now handled client-side in `stats-dashboard.tsx`
+  // to ensure dates are derived correctly from round data.
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/40">

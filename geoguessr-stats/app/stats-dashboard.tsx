@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   Card,
   CardContent,
@@ -11,11 +11,18 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 
-// A more detailed Duel type to safely access nested properties
+interface Guess {
+  roundNumber: number
+  score: number
+  [key: string]: unknown
+}
+
 interface Player {
   id: string
   playerId: string
-  totalScore: number
+  guesses: Guess[]
+  // The API doesn't provide totalScore directly on the player object.
+  // It's better to calculate it.
 }
 
 interface Team {
@@ -23,10 +30,16 @@ interface Team {
   players: Player[]
 }
 
+interface Round {
+  roundNumber: number
+  startTime: string
+  [key: string]: unknown
+}
+
 interface Duel {
   gameId: string
-  created?: string
-  startTime?: string
+  // created/startTime are not consistently at the top level.
+  rounds?: Round[]
   options?: {
     map?: {
       name?: string
@@ -39,40 +52,66 @@ interface Duel {
   [key: string]: unknown
 }
 
+// A new type for our processed duel data
+interface ProcessedDuel extends Duel {
+  date: Date
+  myScore: number
+  opponentScore: number
+  result: 'Win' | 'Loss' | 'Draw' | 'Unknown'
+}
+
 // This should be configured by the user. I've taken it from your old project.
 const MY_PLAYER_ID = '608a7f9394d95300015224ac'
 
 export default function StatsDashboard({ allDuels }: { allDuels: Duel[] }) {
-  const [selectedDuel, setSelectedDuel] = useState<Duel | null>(null)
+  const [selectedDuel, setSelectedDuel] = useState<ProcessedDuel | null>(null)
 
-  const getScores = (duel: Duel) => {
-    if (!duel.teams || duel.teams.length < 2) {
-      return { myScore: 'N/A', opponentScore: 'N/A', result: 'Unknown' }
-    }
+  const processedDuels = useMemo<ProcessedDuel[]>(() => {
+    return allDuels
+      .map((duel) => {
+        if (!duel.teams || duel.teams.length < 2 || !duel.rounds || duel.rounds.length === 0) {
+          return null
+        }
 
-    const meTeam = duel.teams.find(
-      (t) => t.players[0]?.playerId === MY_PLAYER_ID
-    )
-    const opponentTeam = duel.teams.find(
-      (t) => t.players[0]?.playerId !== MY_PLAYER_ID
-    )
+        const meTeam = duel.teams.find(
+          (t) => t.players[0]?.playerId === MY_PLAYER_ID
+        )
+        const opponentTeam = duel.teams.find(
+          (t) => t.players[0]?.playerId !== MY_PLAYER_ID
+        )
 
-    if (!meTeam || !opponentTeam) {
-      return { myScore: 'N/A', opponentScore: 'N/A', result: 'Unknown' }
-    }
+        if (!meTeam || !opponentTeam || !meTeam.players[0] || !opponentTeam.players[0]) {
+          return null
+        }
 
-    const result =
-      duel.result?.winningTeamId === meTeam.id
-        ? 'Win'
-        : duel.result?.winningTeamId
-        ? 'Loss'
-        : 'Draw'
+        const myScore = meTeam.players[0].guesses.reduce((sum, g) => sum + g.score, 0)
+        const opponentScore = opponentTeam.players[0].guesses.reduce((sum, g) => sum + g.score, 0)
 
-    return {
-      myScore: meTeam.players[0]?.totalScore ?? 'N/A',
-      opponentScore: opponentTeam.players[0]?.totalScore ?? 'N/A',
-      result,
-    }
+        const result =
+          duel.result?.winningTeamId === meTeam.id
+            ? 'Win'
+            : duel.result?.winningTeamId
+            ? 'Loss'
+            : 'Draw'
+
+        // The date is more reliable from the first round's startTime
+        const gameDate = duel.rounds?.[0]?.startTime
+
+        return {
+          ...duel,
+          date: new Date(gameDate || 0),
+          myScore,
+          opponentScore,
+          result,
+        }
+      })
+      .filter((d): d is ProcessedDuel => d !== null)
+      .sort((a, b) => b.date.getTime() - a.date.getTime())
+  }, [allDuels])
+
+  // Select the most recent duel by default
+  if (!selectedDuel && processedDuels.length > 0) {
+    setSelectedDuel(processedDuels[0]);
   }
 
   return (
@@ -88,13 +127,13 @@ export default function StatsDashboard({ allDuels }: { allDuels: Duel[] }) {
               <CardHeader className="px-7">
                 <CardTitle>Matches</CardTitle>
                 <CardDescription>
-                  A list of your recent GeoGuessr duels. ({allDuels.length}{' '}
+                  A list of your recent GeoGuessr duels. ({processedDuels.length}{' '}
                   games loaded)
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-1">
-                {allDuels.length > 0 ? (
-                  allDuels.map((duel) => (
+                {processedDuels.length > 0 ? (
+                  processedDuels.map((duel) => (
                     <button
                       key={duel.gameId}
                       onClick={() => setSelectedDuel(duel)}
@@ -108,9 +147,7 @@ export default function StatsDashboard({ allDuels }: { allDuels: Duel[] }) {
                           {duel.options?.map?.name ?? 'Unknown Map'}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {new Date(
-                            duel.created ?? duel.startTime!
-                          ).toLocaleDateString()}
+                          {duel.date.toLocaleDateString()}
                         </p>
                       </div>
                     </button>
@@ -138,11 +175,8 @@ export default function StatsDashboard({ allDuels }: { allDuels: Duel[] }) {
           <CardContent>
             {selectedDuel ? (
               <div>
-                <p>
-                  Final Score: {getScores(selectedDuel).myScore} -{' '}
-                  {getScores(selectedDuel).opponentScore}
-                </p>
-                <p>Result: {getScores(selectedDuel).result}</p>
+                <p>Final Score: {selectedDuel.myScore} - {selectedDuel.opponentScore}</p>
+                <p>Result: {selectedDuel.result}</p>
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
