@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -12,6 +12,14 @@ import { type RoundData } from '../lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button';
+import { ArrowUpDown } from 'lucide-react';
+
+type SortableColumn = 'roundNumber' | 'country' | 'playerScore' | 'opponentScore' | 'distance' | 'time';
+
+interface SortConfig {
+  key: SortableColumn;
+  direction: 'ascending' | 'descending';
+}
 
 interface MatchRoundsTableProps {
   rounds: RoundData[]; // Changed from duel: ProcessedDuel;
@@ -26,20 +34,56 @@ const INITIAL_VISIBLE_ROUNDS = 5;
  */
 export function MatchRoundsTable({ rounds, onRoundSelect, selectedRound }: MatchRoundsTableProps) {
   const [visibleRounds, setVisibleRounds] = useState(INITIAL_VISIBLE_ROUNDS);
-  
-  const roundDetails = rounds.map((round) => { // Iterate directly over rounds
-    return {
-      roundNumber: round.roundNumber,
-      country: round.countryCode.toUpperCase() || 'N/A', // Use countryCode from RoundData
-      playerScore: round.myGuess.score, // Use score from RoundData
-      opponentScore: round.opponentGuess.score, // Use score from RoundData
-      distance: round.myGuess.distance
-        ? `${(round.myGuess.distance / 1000).toFixed(1)} km`
-        : 'N/A',
-      time: round.myGuess.time ? `${round.myGuess.time.toFixed(1)}s` : 'N/A',
-      roundData: round, // Pass the whole RoundData object
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'roundNumber', direction: 'ascending' });
+
+  const roundDetails = useMemo(() => {
+    const details = rounds.map((round) => { // Iterate directly over rounds
+      return {
+        roundNumber: round.roundNumber,
+        country: round.countryCode.toUpperCase() || 'N/A', // Use countryCode from RoundData
+        playerScore: round.myGuess.score, // Use score from RoundData
+        opponentScore: round.opponentGuess.score, // Use score from RoundData
+        distance: round.myGuess.distance,
+        time: round.myGuess.time,
+        roundData: round, // Pass the whole RoundData object
+      }
+    });
+
+    if (sortConfig.key) {
+      details.sort((a, b) => {
+        const aValue = a[sortConfig.key];
+        const bValue = b[sortConfig.key];
+
+        if (aValue === null || aValue === undefined) return 1;
+        if (bValue === null || bValue === undefined) return -1;
+
+        if (aValue < bValue) {
+          return sortConfig.direction === 'ascending' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === 'ascending' ? 1 : -1;
+        }
+        return 0;
+      });
     }
-  })
+
+    return details;
+  }, [rounds, sortConfig]);
+
+  const requestSort = (key: SortableColumn) => {
+    let direction: 'ascending' | 'descending' = 'ascending';
+    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const getSortIndicator = (column: SortableColumn) => {
+    if (sortConfig.key !== column) {
+      return <ArrowUpDown className="ml-2 h-4 w-4" />;
+    }
+    return sortConfig.direction === 'ascending' ? ' 🔼' : ' 🔽';
+  };
 
   const handleShowMore = () => {
     setVisibleRounds(prev => prev + 5);
@@ -54,12 +98,36 @@ export function MatchRoundsTable({ rounds, onRoundSelect, selectedRound }: Match
         <Table>
           <TableHeader className="sticky top-0 z-10">
             <TableRow>
-              <TableHead className="w-[80px]">Round #</TableHead>
-              <TableHead>Country</TableHead>
-              <TableHead className="text-right">My Score</TableHead>
-              <TableHead className="text-right">Opponent Score</TableHead>
-              <TableHead className="text-right">Distance</TableHead>
-              <TableHead className="text-right">Time</TableHead>
+              <TableHead className="w-[80px]">
+                <Button variant="ghost" onClick={() => requestSort('roundNumber')}>
+                  Round #{getSortIndicator('roundNumber')}
+                </Button>
+              </TableHead>
+              <TableHead>
+                <Button variant="ghost" onClick={() => requestSort('country')}>
+                  Country{getSortIndicator('country')}
+                </Button>
+              </TableHead>
+              <TableHead className="text-right">
+                <Button variant="ghost" onClick={() => requestSort('playerScore')}>
+                  My Score{getSortIndicator('playerScore')}
+                </Button>
+              </TableHead>
+              <TableHead className="text-right">
+                <Button variant="ghost" onClick={() => requestSort('opponentScore')}>
+                  Opponent Score{getSortIndicator('opponentScore')}
+                </Button>
+              </TableHead>
+              <TableHead className="text-right">
+                <Button variant="ghost" onClick={() => requestSort('distance')}>
+                  Distance{getSortIndicator('distance')}
+                </Button>
+              </TableHead>
+              <TableHead className="text-right">
+                <Button variant="ghost" onClick={() => requestSort('time')}>
+                  Time{getSortIndicator('time')}
+                </Button>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -75,8 +143,8 @@ export function MatchRoundsTable({ rounds, onRoundSelect, selectedRound }: Match
                 <TableCell>{detail.country}</TableCell>
                 <TableCell className="text-right">{typeof detail.playerScore === 'number' ? detail.playerScore.toLocaleString() : 'N/A'}</TableCell>
                 <TableCell className="text-right">{typeof detail.opponentScore === 'number' ? detail.opponentScore.toLocaleString() : 'N/A'}</TableCell>
-                <TableCell className="text-right">{detail.distance}</TableCell>
-                <TableCell className="text-right">{detail.time}</TableCell>
+                <TableCell className="text-right">{detail.distance ? `${(detail.distance / 1000).toFixed(1)} km` : 'N/A'}</TableCell>
+                <TableCell className="text-right">{detail.time ? `${detail.time.toFixed(1)}s` : 'N/A'}</TableCell>
               </TableRow>
             ))}
           </TableBody>
