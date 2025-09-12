@@ -105,8 +105,8 @@ export default function StatsDashboard() {
 
         setDuels(duelsData.flat(Infinity)); // Flatten the duels array
         setGeoJsonData(geoJson);
-      } catch (e: any) {
-        setError(e.message);
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : "An unknown error occurred");
         console.error("Failed to fetch data:", e);
       } finally {
         setLoading(false);
