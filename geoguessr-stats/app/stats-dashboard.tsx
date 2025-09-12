@@ -434,44 +434,18 @@ export default function StatsDashboard() {
             onCountrySelect={handleCountrySelect} />
                 </div>
                 <div className="flex-grow overflow-y-auto">
-                    {selectedCountry ? (
-                    <div>
-                        <p>Win Rate: {((selectedCountry.wins / selectedCountry.totalRounds) * 100).toFixed(1)}%</p>
-                        <p>Avg. Score Δ: {(selectedCountry.totalScoreDelta / selectedCountry.totalRounds).toFixed(0)}</p>
-                        <p>Total Rounds: {selectedCountry.totalRounds}</p>
-
-                        {selectedCountryRounds && selectedCountryRounds.length > 0 && (
-                            <div className="mt-4">
-                                <h3 className="text-lg font-semibold mb-2">Rounds for {selectedCountry.countryCode.toUpperCase()}</h3>
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Round</TableHead>
-                                            <TableHead>My Score</TableHead>
-                                            <TableHead>Opponent Score</TableHead>
-                                            <TableHead>Score Δ</TableHead>
-                                            <TableHead>Date</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                    {selectedCountryRounds.map((round, index) => (
-                                      <TableRow key={index} onClick={() => {
-                                        // Only select the round — do not switch tabs or clear the right panel.
-                                        setSelectedRoundData(round);
-                                      }} className={cn('cursor-pointer', selectedRoundData?.duelId === round.duelId && selectedRoundData?.roundNumber === round.roundNumber && 'bg-accent')}>
-                                        <TableCell>{round.roundNumber}</TableCell>
-                                        <TableCell>{round.myGuess.score}</TableCell>
-                                        <TableCell>{round.opponentGuess.score}</TableCell>
-                                        <TableCell>{round.scoreDelta}</TableCell>
-                                        <TableCell>{round.date.toLocaleDateString()}</TableCell>
-                                      </TableRow>
-                                    ))}
-                                    </TableBody>
-                                </Table>
-                            </div>
-                        )}
-                    </div>
-                    ) : (
+          {selectedCountry ? (
+          <div>
+            {selectedCountryRounds && selectedCountryRounds.length > 0 ? (
+              <div className="mt-4">
+                <h3 className="text-lg font-semibold mb-2">Rounds for {selectedCountry.countryCode.toUpperCase()}</h3>
+                <MatchRoundsTable rounds={selectedCountryRounds} onRoundSelect={setSelectedRoundData} selectedRound={selectedRoundData} />
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No rounds for this country.</p>
+            )}
+          </div>
+          ) : (
                     <p className="text-sm text-muted-foreground">
                         Details will appear here.
                     </p>
