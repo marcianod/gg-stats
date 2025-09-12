@@ -7,7 +7,7 @@ export default async function HomePage() {
         <h1 className="text-2xl font-bold">GeoGuessr Stats Dashboard</h1>
       </header>
       <main>
-        <StatsDashboard allDuels={[]} geoJson={null} />
+        <StatsDashboard />
       </main>
     </div>
   );
