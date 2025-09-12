@@ -200,6 +200,8 @@ export default function StatsDashboard() {
           opponentScore,
           outcome: result, // Renamed 'result' to 'outcome' to match ProcessedDuel type
           rounds: duel.rounds.map((round, index) => {
+            const mePlayer = meTeam.players[0];
+            const opponentPlayer = opponentTeam.players[0];
             const myGuess = mePlayer.guesses.find(g => g.roundNumber === round.roundNumber);
             const opponentGuess = opponentPlayer.guesses.find(g => g.roundNumber === round.roundNumber);
             const scoreDelta = (myGuess?.score || 0) - (opponentGuess?.score || 0);
