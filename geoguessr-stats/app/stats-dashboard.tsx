@@ -75,6 +75,8 @@ function CountryStatsTable({ stats, onCountrySelect, selectedCountry }: { stats:
 }
 
 export default function StatsDashboard({ allDuels, geoJson }: { allDuels: Duel[], geoJson: GeoJson | null }) {
+  console.log('StatsDashboard received allDuels:', allDuels);
+  console.log('StatsDashboard received geoJson:', geoJson);
   const [activeTab, setActiveTab] = useState('matches');
   const [selectedDuel, setSelectedDuel] = useState<ProcessedDuel | null>(null)
   const [selectedCountry, setSelectedCountry] = useState<CountryData | null>(null);
@@ -210,6 +212,8 @@ export default function StatsDashboard({ allDuels, geoJson }: { allDuels: Duel[]
         ...data
     }));
   }, [processedDuels]);
+
+  console.log('Country Stats generated:', countryStats);
 
   // Select the most recent duel by default
   if (!selectedDuel && processedDuels.length > 0 && activeTab === 'matches') {
