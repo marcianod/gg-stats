@@ -101,10 +101,10 @@ export default function StatsDashboard() {
           throw new Error(`HTTP error! status: ${geoJsonReponse.status} for countries.geojson`);
         }
 
-        const duelsData: any = await duelsResponse.json();
+        const duelsData: Duel[][] = await duelsResponse.json(); // Changed from any
         const geoJson: GeoJson = await geoJsonReponse.json();
 
-        setDuels(duelsData.flat(Infinity)); // Flatten the duels array
+        setDuels(duelsData.flat(Infinity) as Duel[]); // Flatten the duels array and assert type
         setGeoJsonData(geoJson);
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : "An unknown error occurred");
@@ -198,7 +198,7 @@ export default function StatsDashboard() {
           myScore, // This is already a number
           opponentScore,
           outcome: outcome,
-          rounds: duel.rounds && duel.rounds.map((round, index) => {
+          rounds: duel.rounds && duel.rounds.map((round) => {
             const mePlayer = meTeam.players[0];
             const opponentPlayer = opponentTeam.players[0];
             const myGuess = mePlayer.guesses.find(g => g.roundNumber === round.roundNumber);
@@ -249,7 +249,7 @@ export default function StatsDashboard() {
       if (!myPlayer || !opponentPlayer) return;
 
       duel.rounds.forEach((round) => {
-        const countryCode = round.panorama?.countryCode?.toLowerCase();
+        const countryCode = round.countryCode?.toLowerCase(); // Changed from round.panorama?.countryCode
         if (!countryCode) return;
 
         if (!stats[countryCode]) {

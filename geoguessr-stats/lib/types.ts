@@ -29,6 +29,9 @@ export interface Round {
     lat: number;
     lng: number;
     countryCode?: string;
+    heading?: number; // Added this line
+    pitch?: number;   // Added this line
+    zoom?: number;    // Added this line
   };
   [key: string]: unknown;
 }
@@ -53,7 +56,7 @@ export interface ProcessedDuel extends Duel {
   myScore: number;
   opponentScore: number;
   outcome: "Win" | "Loss" | "Draw" | "Unknown";
-  rounds: RoundData[]; // Added this line
+  rounds: RoundData[];
 }
 
 export interface RoundData {
@@ -105,5 +108,5 @@ export interface CountryData {
     draws: number;
     totalRounds: number;
     totalScoreDelta: number;
-    rounds: RoundData[]; // Add rounds property to CountryData
+    rounds: RoundData[];
 }
