@@ -52,7 +52,8 @@ function ChoroplethLayer({ geoJson, countryStats, onCountrySelect, selectedCount
         if (!feature || !feature.properties) {
             return {};
         }
-        const countryCode = feature.properties['ISO3166-1-Alpha-2'] as string;
+        const properties = feature.properties as CountryProperties;
+        const countryCode = properties['ISO3166-1-Alpha-2'] as string;
         const stats = countryStats.find(c => c.countryCode === countryCode);
         const winRate = stats ? (stats.wins / stats.totalRounds) * 100 : undefined;
         return {
@@ -68,7 +69,8 @@ function ChoroplethLayer({ geoJson, countryStats, onCountrySelect, selectedCount
         if (!feature || !feature.properties) {
             return;
         }
-        const countryCode = feature.properties['ISO3166-1-Alpha-2'] as string;
+        const properties = feature.properties as CountryProperties;
+        const countryCode = properties['ISO3166-1-Alpha-2'] as string;
         layer.on({
             click: () => onCountrySelect(countryCode)
         });
