@@ -1,7 +1,7 @@
 import fs from 'fs/promises'
 import path from 'path'
 import StatsDashboard from './stats-dashboard'
-import { type Duel } from '../lib/types'
+import { type Duel, type GeoJson } from '../lib/types'
 
 const STATS_FILE_PATH = path.join(process.cwd(), 'data', 'geoguessr_stats.json');
 const GEOJSON_FILE_PATH = path.join(process.cwd(), 'data', 'countries.geojson');
@@ -33,7 +33,7 @@ async function getStats(): Promise<Duel[]> {
   }
 }
 
-async function getGeoJson(): Promise<any> {
+async function getGeoJson(): Promise<GeoJson | null> {
   try {
     const fileContent = await fs.readFile(GEOJSON_FILE_PATH, 'utf-8');
     return JSON.parse(fileContent);

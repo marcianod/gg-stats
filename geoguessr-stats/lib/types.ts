@@ -1,3 +1,5 @@
+import { FeatureCollection, Geometry } from 'geojson';
+
 export interface Guess {
   roundNumber: number;
   score: number;
@@ -67,4 +69,21 @@ export interface RoundData {
     lng: number;
   };
   roundNumber: number;
+}
+
+export interface CountryProperties {
+    'ISO3166-1-Alpha-2': string;
+    name: string;
+    [key: string]: unknown; // Allow other properties
+}
+
+export type GeoJson = FeatureCollection<Geometry, CountryProperties>;
+
+export interface CountryData {
+    countryCode: string;
+    wins: number;
+    losses: number;
+    draws: number;
+    totalRounds: number;
+    totalScoreDelta: number;
 }

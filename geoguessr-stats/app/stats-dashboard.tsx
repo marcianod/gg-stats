@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
-import { type Duel, type ProcessedDuel, type RoundData } from '@/lib/types'
+import { type Duel, type ProcessedDuel, type RoundData, type GeoJson, type CountryData } from '@/lib/types'
 import { MatchRoundsTable } from './match-rounds-table'
 
 const Map = dynamic(() => import('../components/Map'), {
@@ -28,15 +28,6 @@ const Map = dynamic(() => import('../components/Map'), {
 
 // This should be configured by the user. I've taken it from your old project.
 const MY_PLAYER_ID = '608a7f9394d95300015224ac'
-
-type CountryData = {
-    countryCode: string;
-    wins: number;
-    losses: number;
-    draws: number;
-    totalRounds: number;
-    totalScoreDelta: number;
-};
 
 function CountryStatsTable({ stats, onCountrySelect, selectedCountry }: { stats: CountryData[], onCountrySelect: (country: CountryData) => void, selectedCountry: CountryData | null }) {
     return (
@@ -83,7 +74,7 @@ function CountryStatsTable({ stats, onCountrySelect, selectedCountry }: { stats:
     );
 }
 
-export default function StatsDashboard({ allDuels, geoJson }: { allDuels: Duel[], geoJson: any }) {
+export default function StatsDashboard({ allDuels, geoJson }: { allDuels: Duel[], geoJson: GeoJson | null }) {
   const [activeTab, setActiveTab] = useState('matches');
   const [selectedDuel, setSelectedDuel] = useState<ProcessedDuel | null>(null)
   const [selectedCountry, setSelectedCountry] = useState<CountryData | null>(null);

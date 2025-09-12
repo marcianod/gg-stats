@@ -4,7 +4,8 @@ import 'leaflet/dist/leaflet.css'
 import { MapContainer, TileLayer, Marker, Polyline, useMap, GeoJSON } from 'react-leaflet'
 import L from 'leaflet'
 import { useEffect, useRef } from 'react'
-import { RoundData, CountryData } from '../lib/types'
+import { RoundData, CountryData, GeoJson, CountryProperties } from '../lib/types'
+import { Feature, FeatureCollection, Geometry } from 'geojson';
 
 // Custom icon definitions
 const createPlayerIcon = (color: string) => new L.DivIcon({
@@ -29,7 +30,7 @@ const oppIcon = createPlayerIcon('#dc3545');
 interface MapProps {
   activeTab: string;
   roundData: RoundData | null;
-  geoJson: any;
+  geoJson: GeoJson | null;
   countryStats: CountryData[];
   selectedCountry: CountryData | null;
   onCountrySelect: (countryCode: string) => void;
@@ -47,8 +48,11 @@ function getColorForWinRate(winRate: number | undefined): string {
 function ChoroplethLayer({ geoJson, countryStats, onCountrySelect, selectedCountry }: MapProps) {
     const geoJsonLayer = useRef<L.GeoJSON | null>(null);
 
-    const style = (feature: any) => {
-        const countryCode = feature.properties['ISO3166-1-Alpha-2'];
+    const style = (feature: Feature<Geometry, CountryProperties> | undefined) => {
+        if (!feature || !feature.properties) {
+            return {};
+        }
+        const countryCode = feature.properties['ISO3166-1-Alpha-2'] as string;
         const stats = countryStats.find(c => c.countryCode === countryCode);
         const winRate = stats ? (stats.wins / stats.totalRounds) * 100 : undefined;
         return {
@@ -60,8 +64,11 @@ function ChoroplethLayer({ geoJson, countryStats, onCountrySelect, selectedCount
         };
     };
 
-    const onEachFeature = (feature: any, layer: L.Layer) => {
-        const countryCode = feature.properties['ISO3166-1-Alpha-2'];
+    const onEachFeature = (feature: Feature<Geometry, CountryProperties> | undefined, layer: L.Layer) => {
+        if (!feature || !feature.properties) {
+            return;
+        }
+        const countryCode = feature.properties['ISO3166-1-Alpha-2'] as string;
         layer.on({
             click: () => onCountrySelect(countryCode)
         });
@@ -69,8 +76,9 @@ function ChoroplethLayer({ geoJson, countryStats, onCountrySelect, selectedCount
 
     useEffect(() => {
         if (geoJsonLayer.current && selectedCountry) {
-            const countryLayer = Object.values(geoJsonLayer.current.getLayers()).find((layer: any) => {
-                return layer.feature.properties['ISO3166-1-Alpha-2'] === selectedCountry.countryCode;
+            const countryLayer = Object.values(geoJsonLayer.current.getLayers()).find((layer) => {
+                const l = layer as (L.Layer & { feature?: Feature<Geometry, CountryProperties> });
+                return l.feature?.properties?.['ISO3166-1-Alpha-2'] === selectedCountry.countryCode;
             });
             if (countryLayer) {
                 (countryLayer as L.Path).bringToFront();
@@ -78,10 +86,10 @@ function ChoroplethLayer({ geoJson, countryStats, onCountrySelect, selectedCount
         }
     }, [selectedCountry]);
 
-    return <GeoJSON ref={geoJsonLayer} data={geoJson} style={style} onEachFeature={onEachFeature} />;
+    return <GeoJSON ref={geoJsonLayer} data={geoJson as FeatureCollection<Geometry, CountryProperties>} style={style} onEachFeature={onEachFeature} />;
 }
 
-function MapBounds({ roundData, selectedCountry, geoJson }: { roundData: RoundData | null, selectedCountry: CountryData | null, geoJson: any }) {
+function MapBounds({ roundData, selectedCountry, geoJson }: { roundData: RoundData | null, selectedCountry: CountryData | null, geoJson: GeoJson | null }) {
   const map = useMap();
 
   useEffect(() => {
@@ -97,7 +105,7 @@ function MapBounds({ roundData, selectedCountry, geoJson }: { roundData: RoundDa
 
   useEffect(() => {
     if (selectedCountry && geoJson) {
-        const countryFeature = geoJson.features.find((feature: any) => feature.properties['ISO3166-1-Alpha-2'] === selectedCountry.countryCode);
+        const countryFeature = geoJson.features.find((feature: Feature<Geometry, CountryProperties>) => feature.properties['ISO3166-1-Alpha-2'] === selectedCountry.countryCode);
         if (countryFeature) {
             const bounds = L.geoJSON(countryFeature).getBounds();
             map.fitBounds(bounds);

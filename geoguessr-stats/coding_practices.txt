@@ -1,0 +1,17 @@
+TypeScript Best Practices for this Project:
+
+1.  **Avoid `any` at all costs.** The `any` type opts out of type checking and defeats the purpose of TypeScript. Our build process has strict linting rules that will fail if `any` is used.
+
+2.  **Define Specific Types.** Instead of using `any`, take the time to define a specific `interface` or `type` for your data structures.
+    *   **Where to put them?** If a type is used by multiple components, define it in `lib/types.ts`. If it's only used within a single component, you can define it locally in that file.
+    *   **Example:** Instead of `const data: any = ...`, define `interface MyData { id: number; name: string; }` and use `const data: MyData = ...`.
+
+3.  **Leverage Existing Types.** For external libraries (like Leaflet or React), always try to use the types they provide. For example, Leaflet event handlers provide typed event objects. Use them.
+
+4.  **Be Specific with Function Signatures.** Clearly type the parameters and return values of your functions.
+    *   **Bad:** `function processData(data) { ... }`
+    *   **Good:** `function processData(data: MyData): ProcessedData { ... }`
+
+5.  **Use Utility Types.** TypeScript's built-in utility types like `Partial<T>`, `Pick<T, K>`, and `Omit<T, K>` are very powerful for creating new types from existing ones without duplicating code.
+
+By following these simple rules, we can maintain a high level of code quality, prevent runtime errors, and ensure our builds don't fail due to linting issues.
