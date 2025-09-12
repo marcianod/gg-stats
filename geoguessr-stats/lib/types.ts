@@ -1,44 +1,50 @@
 export interface Guess {
-  roundNumber: number
-  score: number
-  [key: string]: unknown
+  roundNumber: number;
+  score: number;
+  distance?: number;
+  time?: number;
+  [key: string]: unknown;
 }
 
 export interface Player {
-  id: string
-  playerId: string
-  guesses: Guess[]
+  playerId: string;
+  guesses: Guess[];
+  isMe?: boolean;
+  [key: string]: unknown;
 }
 
 export interface Team {
-  id: string
-  players: Player[]
+  id: string;
+  players: Player[];
 }
 
 export interface Round {
-  roundNumber: number
-  startTime: string
-  [key: string]: unknown
+  roundNumber: number;
+  startTime: string;
+  panorama?: {
+    countryCode?: string;
+  };
+  [key: string]: unknown;
 }
 
 export interface Duel {
-  gameId: string
-  rounds?: Round[]
+  gameId: string;
+  rounds?: Round[];
   options?: {
     map?: {
-      name?: string
-    }
-  }
-  teams?: Team[]
+      name?: string;
+    };
+  };
+  teams?: Team[];
   result?: {
-    winningTeamId?: string
-  }
-  [key: string]: unknown
+    winningTeamId?: string;
+  };
+  [key: string]: unknown;
 }
 
 export interface ProcessedDuel extends Duel {
-  date: Date
-  myScore: number
-  opponentScore: number
-  outcome: 'Win' | 'Loss' | 'Draw' | 'Unknown'
+  date: Date;
+  myScore: number;
+  opponentScore: number;
+  outcome: "Win" | "Loss" | "Draw" | "Unknown";
 }

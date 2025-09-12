@@ -32,12 +32,14 @@ export function MatchRoundsTable({ duel }: MatchRoundsTableProps) {
     const roundInfo = rounds?.[index]
     return {
       roundNumber: index + 1,
-      country: roundInfo?.countryCode || 'N/A',
+      country: roundInfo?.panorama?.countryCode || 'N/A',
       playerScore: playerGuess.score,
       // Use optional chaining and the nullish coalescing operator for safety.
       opponentScore: opponentGuess?.score ?? 0,
-      distance: `${((playerGuess.distanceInMeters as number) / 1000).toFixed(1)} km`,
-      time: `${(playerGuess.time as number).toFixed(1)}s`,
+      distance: playerGuess.distance
+        ? `${(playerGuess.distance / 1000).toFixed(1)} km`
+        : 'N/A',
+      time: playerGuess.time ? `${playerGuess.time.toFixed(1)}s` : 'N/A',
     }
   })
 
@@ -63,8 +65,8 @@ export function MatchRoundsTable({ duel }: MatchRoundsTableProps) {
               <TableRow key={detail.roundNumber}>
                 <TableCell className="font-medium">{detail.roundNumber}</TableCell>
                 <TableCell>{detail.country}</TableCell>
-                <TableCell className="text-right">{typeof detail.playerScore === 'number' ? detail.playerScore.toLocaleString() : detail.playerScore}</TableCell>
-                <TableCell className="text-right">{typeof detail.opponentScore === 'number' ? detail.opponentScore.toLocaleString() : detail.opponentScore}</TableCell>
+                <TableCell className="text-right">{typeof detail.playerScore === 'number' ? detail.playerScore.toLocaleString() : 'N/A'}</TableCell>
+                <TableCell className="text-right">{typeof detail.opponentScore === 'number' ? detail.opponentScore.toLocaleString() : 'N/A'}</TableCell>
                 <TableCell className="text-right">{detail.distance}</TableCell>
                 <TableCell className="text-right">{detail.time}</TableCell>
               </TableRow>
