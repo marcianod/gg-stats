@@ -120,4 +120,6 @@ export interface CountryData {
     totalRounds: number;
     totalScoreDelta: number;
     rounds: RoundData[];
+    winRate: number;
+    avgScoreDelta: number;
 }

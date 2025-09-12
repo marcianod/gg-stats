@@ -9,21 +9,11 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { cn } from '@/lib/utils'
 import { type Duel, type ProcessedDuel, type RoundData, type GeoJson, type CountryData } from '@/lib/types'
 import { MatchRoundsTable } from './match-rounds-table'
 import { RecentMatchesTable } from './recent-matches-table'
-import { Button } from '@/components/ui/button'
-import { ArrowUpDown } from 'lucide-react'
+import { SortableTable, type ColumnDef } from '@/components/ui/sortable-table'
 
 const Map = dynamic(() => import('../components/Map'), {
   ssr: false,
@@ -32,63 +22,31 @@ const Map = dynamic(() => import('../components/Map'), {
 // This should ideally be configurable by the user or from environment variables.
 const MY_PLAYER_ID = '608a7f9394d95300015224ac'
 
-type SortableCountryColumn = 'countryCode' | 'winRate' | 'avgScoreDelta' | 'totalRounds';
-
-interface CountrySortConfig {
-  key: SortableCountryColumn;
-  direction: 'ascending' | 'descending';
-}
-
 function CountryStatsTable({ stats, onCountrySelect, selectedCountry }: { stats: CountryData[], onCountrySelect: (countryCode: string) => void, selectedCountry: CountryData | null }) {
-    const [sortConfig, setSortConfig] = useState<CountrySortConfig>({ key: 'totalRounds', direction: 'descending' });
-
-    const sortedStats = useMemo(() => {
-        const sortableStats = [...stats];
-        if (sortConfig.key) {
-            sortableStats.sort((a, b) => {
-                let aValue: string | number;
-                let bValue: string | number;
-
-                switch (sortConfig.key) {
-                    case 'winRate':
-                        aValue = (a.wins / a.totalRounds) * 100;
-                        bValue = (b.wins / b.totalRounds) * 100;
-                        break;
-                    case 'avgScoreDelta':
-                        aValue = a.totalScoreDelta / a.totalRounds;
-                        bValue = b.totalScoreDelta / b.totalRounds;
-                        break;
-                    default:
-                        aValue = a[sortConfig.key];
-                        bValue = b[sortConfig.key];
-                }
-
-                if (aValue < bValue) {
-                    return sortConfig.direction === 'ascending' ? -1 : 1;
-                }
-                if (aValue > bValue) {
-                    return sortConfig.direction === 'ascending' ? 1 : -1;
-                }
-                return 0;
-            });
-        }
-        return sortableStats;
-    }, [stats, sortConfig]);
-
-    const requestSort = (key: SortableCountryColumn) => {
-        let direction: 'ascending' | 'descending' = 'ascending';
-        if (sortConfig.key === key && sortConfig.direction === 'ascending') {
-            direction = 'descending';
-        }
-        setSortConfig({ key, direction });
-    };
-
-    const getSortIndicator = (column: SortableCountryColumn) => {
-        if (sortConfig.key !== column) {
-            return <ArrowUpDown className="ml-2 h-4 w-4" />;
-        }
-        return sortConfig.direction === 'ascending' ? ' 🔼' : ' 🔽';
-    };
+    const columns: ColumnDef<CountryData>[] = [
+        {
+            accessorKey: 'countryCode',
+            header: 'Country',
+            cell: (row) => row.countryCode.toUpperCase(),
+        },
+        {
+            accessorKey: 'winRate',
+            header: 'Win Rate',
+            cell: (row) => `${((row.wins / row.totalRounds) * 100).toFixed(1)}%`,
+            className: 'text-right',
+        },
+        {
+            accessorKey: 'avgScoreDelta',
+            header: 'Avg. Score Δ',
+            cell: (row) => `${(row.totalScoreDelta / row.totalRounds).toFixed(0)}`,
+            className: 'text-right',
+        },
+        {
+            accessorKey: 'totalRounds',
+            header: 'Total Rounds',
+            className: 'text-right',
+        },
+    ];
 
     return (
         <Card className="flex flex-col h-full">
@@ -99,54 +57,13 @@ function CountryStatsTable({ stats, onCountrySelect, selectedCountry }: { stats:
                 </CardDescription>
             </CardHeader>
             <CardContent className="flex-grow overflow-hidden p-0">
-                <div className="h-full overflow-y-auto p-7">
-                    <Table>
-                        <TableHeader className="sticky top-0 z-10 bg-background">
-                            <TableRow>
-                                <TableHead>
-                                    <Button variant="ghost" onClick={() => requestSort('countryCode')}>
-                                        Country{getSortIndicator('countryCode')}
-                                    </Button>
-                                </TableHead>
-                                <TableHead className="text-right">
-                                    <Button variant="ghost" onClick={() => requestSort('winRate')}>
-                                        Win Rate{getSortIndicator('winRate')}
-                                    </Button>
-                                </TableHead>
-                                <TableHead className="text-right">
-                                    <Button variant="ghost" onClick={() => requestSort('avgScoreDelta')}>
-                                        Avg. Score Δ{getSortIndicator('avgScoreDelta')}
-                                    </Button>
-                                </TableHead>
-                                <TableHead className="text-right">
-                                    <Button variant="ghost" onClick={() => requestSort('totalRounds')}>
-                                        Total Rounds{getSortIndicator('totalRounds')}
-                                    </Button>
-                                </TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {sortedStats.map((stat) => (
-                                <TableRow
-                                    key={stat.countryCode}
-                                    onClick={() => onCountrySelect(stat.countryCode)}
-                                    className={cn(
-                                        'cursor-pointer',
-                                        selectedCountry?.countryCode === stat.countryCode && 'bg-accent'
-                                    )}>
-                                    <TableCell>{stat.countryCode.toUpperCase()}</TableCell>
-                                    <TableCell className="text-right">
-                                        {`${((stat.wins / stat.totalRounds) * 100).toFixed(1)}%`}
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        {`${(stat.totalScoreDelta / stat.totalRounds).toFixed(0)}`}
-                                    </TableCell>
-                                    <TableCell className="text-right">{stat.totalRounds}</TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
+                <SortableTable
+                    columns={columns}
+                    data={stats}
+                    onRowClick={(row) => onCountrySelect(row.countryCode)}
+                    selectedRow={selectedCountry}
+                    initialSortKey="totalRounds"
+                />
             </CardContent>
         </Card>
     );
@@ -377,10 +294,16 @@ export default function StatsDashboard() {
       });
     });
 
-    return Object.entries(stats).map(([countryCode, data]) => ({
-        countryCode,
-        ...data,
-    }));
+    return Object.entries(stats).map(([countryCode, data]) => {
+        const winRate = (data.wins / data.totalRounds) * 100;
+        const avgScoreDelta = data.totalScoreDelta / data.totalRounds;
+        return {
+            countryCode,
+            ...data,
+            winRate,
+            avgScoreDelta,
+        };
+    });
   }, [processedDuels]);
 
   useEffect(() => {
@@ -401,7 +324,6 @@ export default function StatsDashboard() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
     <div className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8 lg:grid-cols-3 xl:grid-cols-3">
       <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-1">
         <Tabs defaultValue="matches" onValueChange={handleTabChange}>
@@ -511,7 +433,6 @@ export default function StatsDashboard() {
             </Card>
         )}
       </div>
-    </div>
     </div>
   )
 }
