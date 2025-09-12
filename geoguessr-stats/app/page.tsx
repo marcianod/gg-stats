@@ -1,16 +1,19 @@
 import fs from 'fs/promises';
 import path from 'path';
-
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import StatsDashboard from './stats-dashboard';
 
 // Define a type for the duel object for consistency with the API route
+interface Player {
+  id: string;
+  playerId: string;
+  totalScore: number;
+}
+
+interface Team {
+  id: string;
+  players: Player[];
+}
+
 interface Duel {
   gameId: string;
   created?: string;
@@ -19,6 +22,10 @@ interface Duel {
     map?: {
       name?: string;
     };
+  };
+  teams?: Team[];
+  result?: {
+    winningTeamId?: string;
   };
   // Using `unknown` is safer than `any` for other dynamic properties
   [key: string]: unknown;
@@ -71,66 +78,8 @@ export default async function HomePage() {
       <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 py-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
         <h1 className="text-2xl font-bold">GeoGuessr Stats Dashboard</h1>
       </header>
-      <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8 lg:grid-cols-3 xl:grid-cols-3">
-        <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-1">
-          <Tabs defaultValue="matches">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="matches">Recent Matches</TabsTrigger>
-              <TabsTrigger value="countries">By Country</TabsTrigger>
-            </TabsList>
-            <TabsContent value="matches">
-              <Card>
-                <CardHeader className="px-7">
-                  <CardTitle>Matches</CardTitle>
-                  <CardDescription>
-                    A list of your recent GeoGuessr duels. ({allDuels.length}{' '}
-                    games loaded)
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-3">
-                  {allDuels.length > 0 ? (
-                    allDuels.map((duel) => (
-                      <div
-                        key={duel.gameId}
-                        className="rounded-lg border bg-card p-3 text-sm transition-colors hover:bg-muted/50"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-semibold">
-                            {duel.options?.map?.name ?? 'Unknown Map'}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(
-                              duel.created ?? duel.startTime!
-                            ).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="py-8 text-center text-sm text-muted-foreground">
-                      No duels found.
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
-        <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
-          <Card className="min-h-[60vh]">
-            <CardHeader>
-              <CardTitle>Match Details</CardTitle>
-              <CardDescription>
-                Select a match from the list to see its details.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Details will appear here.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+      <main>
+        <StatsDashboard allDuels={allDuels} />
       </main>
     </div>
   );
