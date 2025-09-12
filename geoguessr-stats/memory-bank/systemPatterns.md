@@ -1,21 +1,16 @@
-# System Patterns
+# GeoGuessr Stats Dashboard - System Patterns
 
-## System Architecture
+This application follows a modern, component-based architecture, leveraging the features of Next.js and React.
 
-The application follows a component-based architecture built on Next.js with the App Router.
+## High-Level Architecture:
 
--   **Pages and Layouts:** The `app/` directory defines the application's routes and structure.
-    -   `app/layout.tsx`: The root layout that wraps all pages.
-    -   `app/page.tsx`: The main page of the application, which composes the main UI elements.
--   **Data Fetching:** Data is currently loaded from a static JSON file (`public/geoguessr_stats.json`). The data fetching logic is likely located within the page or a server component.
--   **Component Structure:**
-    -   **High-Level Components:** Found in the `app/` directory, these components are specific to certain pages or features (e.g., `StatsDashboard`, `MatchRoundsTable`).
-    -   **Reusable Components:** Found in the `components/` directory.
-        -   `components/Map.tsx`: A specialized component for the map visualization.
-        -   `components/ui/`: A collection of generic, reusable UI components (e.g., `Button`, `Card`, `Table`, `Tabs`) that are used to build the application's interface. This promotes consistency and reusability.
+*   **Component-Based UI:** The user interface is built as a tree of reusable React components, promoting modularity and maintainability. Key components include `StatsDashboard`, `RecentMatchesTable`, `MatchRoundsTable`, `CountryStatsTable`, and `Map`.
+*   **Client-Side Data Fetching:** The application fetches the GeoGuessr statistics data (`geoguessr_stats.json` and `countries.geojson`) on the client-side using the `useEffect` hook. This approach is suitable for data that can be loaded after the initial page render.
+*   **In-Memory Data Processing:** Once the data is fetched, it is processed and transformed in memory using the `useMemo` hook. This optimizes performance by memoizing the results of expensive calculations and preventing unnecessary re-renders.
+*   **State Management:** The application uses React's built-in state management hooks (`useState`, `useMemo`) to manage the application's state. This includes the duel data, UI state (like the active tab and selected items), and filters.
 
-## Key Technical Decisions
+## Key Design Patterns:
 
--   **Server Components:** The use of Next.js App Router suggests that the application leverages React Server Components for performance and data fetching.
--   **Utility-First CSS:** The project uses Tailwind CSS, indicating a preference for utility-first styling over traditional CSS-in-JS or component-specific stylesheets.
--   **Shadcn/ui Pattern:** The structure of `components/ui` and the use of `tailwind-merge` and `clsx` strongly suggest the use of the `shadcn/ui` pattern for building the component library. This involves copying component code into the project for full control and customization, rather than installing them as a library.
+*   **Dynamic Imports:** The `Map` component is loaded dynamically using `next/dynamic`. This prevents the large Leaflet library from being included in the initial JavaScript bundle, improving the application's initial load time.
+*   **Separation of Concerns:** The application demonstrates a clear separation of concerns. UI components are responsible for rendering the UI, data processing logic is encapsulated in hooks and utility functions, and type definitions are kept in a separate `lib/types.ts` file.
+*   **Utility-First CSS:** The use of Tailwind CSS promotes a utility-first approach to styling, which allows for building custom designs without writing custom CSS.

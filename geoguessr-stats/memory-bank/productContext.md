@@ -1,17 +1,16 @@
-# Product Context
+# GeoGuessr Stats Dashboard - Product Context
 
-## Problem Solved
+## Product Goal
 
-GeoGuessr players lack a centralized and user-friendly platform to track their game statistics over time. While the game itself provides some basic data, it doesn't offer in-depth analysis or historical tracking, making it difficult for players to identify trends, strengths, and weaknesses in their gameplay.
+The primary goal of this project is to provide GeoGuessr players with a powerful tool to analyze their gameplay data. By visualizing their duel history, performance on different maps, and stats by country, the dashboard aims to help users identify their strengths and weaknesses, track their progress over time, and ultimately improve their GeoGuessr skills.
 
-## How It Works
+## Target Audience
 
-The application will sync with a user's GeoGuessr data (initially via a JSON file) and present it in an intuitive and interactive dashboard. Users can view their stats in sortable tables and see their guess locations on a world map.
+The target audience for this application is active GeoGuessr players who are interested in data-driven analysis of their performance. This includes both casual players looking for interesting insights and competitive players who want to gain an edge.
 
-A key feature is the dynamic query builder, which allows users to create complex filters to analyze their data. For example, a user could query for all losses on a specific map where their opponent's MMR was above a certain threshold. This elevates the application from a simple stat viewer to a powerful analysis tool.
+## User Stories
 
-## User Experience Goals
-
--   **Clarity:** Present complex data in a simple and understandable way.
--   **Interactivity:** Allow users to explore their data through filters, tabs, and interactive maps.
--   **Insightful:** Help users discover meaningful patterns in their gameplay.
+*   As a user, I want to see a list of my recent matches so I can quickly review my performance.
+*   As a user, I want to view detailed statistics for each match, including the rounds, scores, and locations, so I can understand what happened in the game.
+*   As a user, I want to see my aggregated statistics by country, so I can identify which countries I'm good at and which ones I need to practice.
+*   As a user, I want to filter my match history so I can focus on specific types of games or maps.
