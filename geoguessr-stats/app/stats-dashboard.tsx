@@ -29,7 +29,7 @@ const Map = dynamic(() => import('../components/Map'), {
 // This should ideally be configurable by the user or from environment variables.
 const MY_PLAYER_ID = '608a7f9394d95300015224ac'
 
-function CountryStatsTable({ stats, onCountrySelect, selectedCountry }: { stats: CountryData[], onCountrySelect: (countryCode: string) => void, selectedCountry: CountryData | null }) {
+function CountryStatsTable({ stats, onCountrySelect, selectedCountry }: { stats: CountryData[], onCountrySelect: (country: CountryData) => void, selectedCountry: CountryData | null }) {
     return (
         <Card>
             <CardHeader className="px-7">
@@ -52,7 +52,7 @@ function CountryStatsTable({ stats, onCountrySelect, selectedCountry }: { stats:
                         {stats.map((stat) => (
                             <TableRow 
                                 key={stat.countryCode} 
-                                onClick={() => onCountrySelect(stat.countryCode)}
+                                onClick={() => onCountrySelect(stat)}
                                 className={cn(
                                     'cursor-pointer',
                                     selectedCountry?.countryCode === stat.countryCode && 'bg-accent'
@@ -134,10 +134,9 @@ export default function StatsDashboard() {
     setSelectedCountry(null); // Reset selected country when a duel is selected
   }
 
-  const handleCountrySelect = (countryCode: string) => {
-    const country = countryStats.find(c => c.countryCode === countryCode) || null;
+  const handleCountrySelect = (country: CountryData) => {
     setSelectedCountry(country);
-    setSelectedCountryRounds(country?.rounds || null);
+    setSelectedCountryRounds(country.rounds);
   };
 
   const processedDuels = useMemo(() => {
@@ -389,7 +388,7 @@ export default function StatsDashboard() {
                             The Map component should ideally allow clicking on a country to select it.
                             If it does, it should call the `onCountrySelect` prop with the selected country's data.
                         */}
-                        <Map activeTab={activeTab} roundData={selectedRoundData} geoJson={geoJsonData} countryStats={countryStats} selectedCountry={selectedCountry?.countryCode} onCountrySelect={handleCountrySelect} />
+                        <Map activeTab={activeTab} roundData={selectedRoundData} geoJson={geoJsonData} countryStats={countryStats} selectedCountry={selectedCountry} onCountrySelect={handleCountrySelect} />
                     </div>
                     <div className="flex-grow overflow-y-auto">
                         <p>Final Score: {selectedDuel.myScore} - {selectedDuel.opponentScore}</p>
@@ -426,7 +425,7 @@ export default function StatsDashboard() {
                         roundData={null} 
                         geoJson={geoJsonData} 
                         countryStats={countryStats} 
-                        selectedCountry={selectedCountry?.countryCode} 
+                        selectedCountry={selectedCountry} 
                         onCountrySelect={handleCountrySelect} />
                 </div>
                 <div className="flex-grow overflow-y-auto">
