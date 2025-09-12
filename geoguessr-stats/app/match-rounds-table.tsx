@@ -6,14 +6,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { type ProcessedDuel } from '../lib/types'
+import { type ProcessedDuel, type RoundData } from '../lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 
 interface MatchRoundsTableProps {
   duel: ProcessedDuel;
-  onRoundSelect: (roundData: any) => void;
-  selectedRound: any | null;
+  onRoundSelect: (roundData: RoundData) => void;
+  selectedRound: RoundData | null;
 }
 
 /**
@@ -28,6 +28,17 @@ export function MatchRoundsTable({ duel, onRoundSelect, selectedRound }: MatchRo
   const roundDetails = myPlayer?.guesses.map((playerGuess, index) => {
     const opponentGuess = opponentPlayer?.guesses[index]
     const roundInfo = rounds?.[index]
+
+    let roundData: RoundData | null = null;
+    if (roundInfo?.panorama && playerGuess && opponentGuess) {
+        roundData = {
+            actual: { lat: roundInfo.panorama.lat, lng: roundInfo.panorama.lng },
+            myGuess: { lat: playerGuess.lat, lng: playerGuess.lng },
+            opponentGuess: { lat: opponentGuess.lat, lng: opponentGuess.lng },
+            roundNumber: index + 1,
+        }
+    }
+
     return {
       roundNumber: index + 1,
       country: roundInfo?.panorama?.countryCode || 'N/A',
@@ -37,12 +48,7 @@ export function MatchRoundsTable({ duel, onRoundSelect, selectedRound }: MatchRo
         ? `${(playerGuess.distance / 1000).toFixed(1)} km`
         : 'N/A',
       time: playerGuess.time ? `${playerGuess.time.toFixed(1)}s` : 'N/A',
-      roundData: {
-        actual: roundInfo?.panorama,
-        myGuess: playerGuess,
-        opponentGuess: opponentGuess,
-        roundNumber: index + 1,
-      }
+      roundData,
     }
   })
 
@@ -67,9 +73,9 @@ export function MatchRoundsTable({ duel, onRoundSelect, selectedRound }: MatchRo
             {roundDetails?.map(detail => (
               <TableRow 
                 key={detail.roundNumber}
-                onClick={() => onRoundSelect(detail.roundData)}
+                onClick={() => detail.roundData && onRoundSelect(detail.roundData)}
                 className={cn(
-                    'cursor-pointer',
+                    detail.roundData && 'cursor-pointer',
                     selectedRound?.roundNumber === detail.roundNumber && 'bg-accent'
                 )}>
                 <TableCell className="font-medium">{detail.roundNumber}</TableCell>

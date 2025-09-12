@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
-import { type Duel, type ProcessedDuel } from '@/lib/types'
+import { type Duel, type ProcessedDuel, type RoundData } from '@/lib/types'
 import { MatchRoundsTable } from './match-rounds-table'
 
 const Map = dynamic(() => import('../components/Map'), {
@@ -87,7 +87,7 @@ export default function StatsDashboard({ allDuels }: { allDuels: Duel[] }) {
   const [activeTab, setActiveTab] = useState('matches');
   const [selectedDuel, setSelectedDuel] = useState<ProcessedDuel | null>(null)
   const [selectedCountry, setSelectedCountry] = useState<CountryData | null>(null);
-  const [selectedRoundData, setSelectedRoundData] = useState<any | null>(null);
+  const [selectedRoundData, setSelectedRoundData] = useState<RoundData | null>(null);
 
   const handleTabChange = (value: string) => {
       setActiveTab(value);
