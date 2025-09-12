@@ -8,38 +8,41 @@ import {
 } from '@/components/ui/table'
 import { type ProcessedDuel } from '../lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { cn } from '@/lib/utils'
 
 interface MatchRoundsTableProps {
-  duel: ProcessedDuel
+  duel: ProcessedDuel;
+  onRoundSelect: (roundData: any) => void;
+  selectedRound: any | null;
 }
 
 /**
  * Displays a table with a round-by-round breakdown of a duel.
  */
-export function MatchRoundsTable({ duel }: MatchRoundsTableProps) {
+export function MatchRoundsTable({ duel, onRoundSelect, selectedRound }: MatchRoundsTableProps) {
   const { rounds } = duel
   
-  // Find the player and opponent from the `teams` array within the duel.
-  // This logic is now self-contained and doesn't rely on external constants.
-  const myPlayer = duel.teams?.find(team => team.players.some(p => 'isMe' in p && p.isMe))?.players[0];
-  const opponentPlayer = duel.teams?.find(team => team.players.some(p => 'isMe' in p && !p.isMe))?.players[0];
+  const myPlayer = duel.teams?.find(team => team.players.some(p => p.isMe))?.players[0];
+  const opponentPlayer = duel.teams?.find(team => !team.players.some(p => p.isMe))?.players[0];
 
-  // Combine player and opponent guesses with round info for easy rendering.
-  // We add a check to ensure myPlayer and its guesses exist before mapping.
   const roundDetails = myPlayer?.guesses.map((playerGuess, index) => {
-    // Safely access the corresponding opponent's guess for the same round.
     const opponentGuess = opponentPlayer?.guesses[index]
     const roundInfo = rounds?.[index]
     return {
       roundNumber: index + 1,
       country: roundInfo?.panorama?.countryCode || 'N/A',
       playerScore: playerGuess.score,
-      // Use optional chaining and the nullish coalescing operator for safety.
       opponentScore: opponentGuess?.score ?? 0,
       distance: playerGuess.distance
         ? `${(playerGuess.distance / 1000).toFixed(1)} km`
         : 'N/A',
       time: playerGuess.time ? `${playerGuess.time.toFixed(1)}s` : 'N/A',
+      roundData: {
+        actual: roundInfo?.panorama,
+        myGuess: playerGuess,
+        opponentGuess: opponentGuess,
+        roundNumber: index + 1,
+      }
     }
   })
 
@@ -62,7 +65,13 @@ export function MatchRoundsTable({ duel }: MatchRoundsTableProps) {
           </TableHeader>
           <TableBody>
             {roundDetails?.map(detail => (
-              <TableRow key={detail.roundNumber}>
+              <TableRow 
+                key={detail.roundNumber}
+                onClick={() => onRoundSelect(detail.roundData)}
+                className={cn(
+                    'cursor-pointer',
+                    selectedRound?.roundNumber === detail.roundNumber && 'bg-accent'
+                )}>
                 <TableCell className="font-medium">{detail.roundNumber}</TableCell>
                 <TableCell>{detail.country}</TableCell>
                 <TableCell className="text-right">{typeof detail.playerScore === 'number' ? detail.playerScore.toLocaleString() : 'N/A'}</TableCell>

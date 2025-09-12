@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import dynamic from 'next/dynamic'
 import {
   Card,
   CardContent,
@@ -20,6 +21,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import { type Duel, type ProcessedDuel } from '@/lib/types'
 import { MatchRoundsTable } from './match-rounds-table'
+
+const Map = dynamic(() => import('../components/Map'), {
+  ssr: false,
+})
 
 // This should be configured by the user. I've taken it from your old project.
 const MY_PLAYER_ID = '608a7f9394d95300015224ac'
@@ -82,15 +87,22 @@ export default function StatsDashboard({ allDuels }: { allDuels: Duel[] }) {
   const [activeTab, setActiveTab] = useState('matches');
   const [selectedDuel, setSelectedDuel] = useState<ProcessedDuel | null>(null)
   const [selectedCountry, setSelectedCountry] = useState<CountryData | null>(null);
+  const [selectedRoundData, setSelectedRoundData] = useState<any | null>(null);
 
   const handleTabChange = (value: string) => {
       setActiveTab(value);
       if (value === 'countries') {
         setSelectedDuel(null);
+        setSelectedRoundData(null);
       } else {
         setSelectedCountry(null);
       }
     };
+
+  const handleDuelSelect = (duel: ProcessedDuel) => {
+    setSelectedDuel(duel);
+    setSelectedRoundData(null);
+  }
 
   const processedDuels = useMemo(() => {
     return allDuels
@@ -228,7 +240,7 @@ export default function StatsDashboard({ allDuels }: { allDuels: Duel[] }) {
                   processedDuels.map((duel) => (
                     <button
                       key={duel.gameId}
-                      onClick={() => setSelectedDuel(duel)}
+                      onClick={() => handleDuelSelect(duel)}
                       className={cn(
                         'rounded-lg border bg-card p-3 text-left text-sm transition-all hover:bg-accent',
                         selectedDuel?.gameId === duel.gameId && 'bg-accent'
@@ -259,7 +271,7 @@ export default function StatsDashboard({ allDuels }: { allDuels: Duel[] }) {
       </div>
       <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
         {activeTab === 'matches' && (
-            <Card className="min-h-[60vh]">
+            <Card className="min-h-[80vh]">
             <CardHeader>
                 <CardTitle>Match Details</CardTitle>
                 <CardDescription>
@@ -268,12 +280,17 @@ export default function StatsDashboard({ allDuels }: { allDuels: Duel[] }) {
                     : 'Select a match from the list to see its details.'}
                 </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="grid gap-4">
                 {selectedDuel ? (
-                <div>
-                    <p>Final Score: {selectedDuel.myScore} - {selectedDuel.opponentScore}</p>
-                    <p>Result: {selectedDuel.outcome}</p>
-                    <MatchRoundsTable duel={selectedDuel} />
+                <div className="grid grid-rows-2 gap-4 h-[70vh]">
+                    <div>
+                        <p>Final Score: {selectedDuel.myScore} - {selectedDuel.opponentScore}</p>
+                        <p>Result: {selectedDuel.outcome}</p>
+                        <MatchRoundsTable duel={selectedDuel} onRoundSelect={setSelectedRoundData} selectedRound={selectedRoundData} />
+                    </div>
+                    <div className="min-h-[30vh]">
+                        <Map roundData={selectedRoundData} />
+                    </div>
                 </div>
                 ) : (
                 <p className="text-sm text-muted-foreground">
