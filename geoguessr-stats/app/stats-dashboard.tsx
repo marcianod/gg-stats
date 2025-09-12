@@ -84,6 +84,7 @@ export default function StatsDashboard() {
   const [selectedDuel, setSelectedDuel] = useState<ProcessedDuel | null>(null)
   const [selectedCountry, setSelectedCountry] = useState<CountryData | null>(null);
   const [selectedRoundData, setSelectedRoundData] = useState<RoundData | null>(null);
+  const [selectedCountryRounds, setSelectedCountryRounds] = useState<RoundData[] | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -131,11 +132,24 @@ export default function StatsDashboard() {
     setSelectedRoundData(null);
   }
 
-  const handleCountrySelect = (countryCode: string) => {
-    const country = countryStats.find(c => c.countryCode === countryCode);
-    if (country) {
-        setSelectedCountry(country);
-    }
+  const handleCountrySelect = (country: CountryData) => {
+    setSelectedCountry(country);
+    const roundsForCountry: RoundData[] = [];
+    processedDuels.forEach(duel => {
+      duel.rounds?.forEach(round => {
+        if (round.panorama?.countryCode?.toLowerCase() === country.countryCode) {
+          // Need to transform the round data to RoundData type
+          // This is a simplified version, you might need more data from the original round
+          roundsForCountry.push({
+            actual: { lat: round.panorama.lat, lng: round.panorama.lng },
+            myGuess: { lat: duel.teams?.[0]?.players?.[0]?.guesses?.find(g => g.roundNumber === round.roundNumber)?.lat || 0, lng: duel.teams?.[0]?.players?.[0]?.guesses?.find(g => g.roundNumber === round.roundNumber)?.lng || 0 },
+            opponentGuess: { lat: duel.teams?.[1]?.players?.[0]?.guesses?.find(g => g.roundNumber === round.roundNumber)?.lat || 0, lng: duel.teams?.[1]?.players?.[0]?.guesses?.find(g => g.roundNumber === round.roundNumber)?.lng || 0 },
+            roundNumber: round.roundNumber,
+          });
+        }
+      });
+    });
+    setSelectedCountryRounds(roundsForCountry);
   };
 
   const processedDuels = useMemo(() => {
@@ -185,12 +199,34 @@ export default function StatsDashboard() {
           myScore, // This is already a number
           opponentScore,
           outcome: result, // Renamed 'result' to 'outcome' to match ProcessedDuel type
+          rounds: duel.rounds.map((round, index) => {
+            const myGuess = mePlayer.guesses.find(g => g.roundNumber === round.roundNumber);
+            const opponentGuess = opponentPlayer.guesses.find(g => g.roundNumber === round.roundNumber);
+            const scoreDelta = (myGuess?.score || 0) - (opponentGuess?.score || 0);
+            const distDelta = (myGuess?.distance || 0) - (opponentGuess?.distance || 0);
+            const timeDelta = ((myGuess?.time || 0) - (opponentGuess?.time || 0));
+
+            return {
+              actual: { lat: round.panorama?.lat || 0, lng: round.panorama?.lng || 0, heading: round.panorama?.heading, pitch: round.panorama?.pitch, zoom: round.panorama?.zoom },
+              myGuess: { lat: myGuess?.lat || 0, lng: myGuess?.lng || 0, score: myGuess?.score || 0, distance: myGuess?.distance || 0, time: myGuess?.time || 0 },
+              opponentGuess: { lat: opponentGuess?.lat || 0, lng: opponentGuess?.lng || 0, score: opponentGuess?.score || 0, distance: opponentGuess?.distance || 0, time: opponentGuess?.time || 0 },
+              roundNumber: round.roundNumber,
+              countryCode: round.panorama?.countryCode?.toLowerCase() || '',
+              duelId: duel.gameId,
+              myPlayerId: mePlayer.playerId,
+              opponentPlayerId: opponentPlayer.playerId,
+              date: new Date(round.startTime),
+              won: (myGuess?.score || 0) > (opponentGuess?.score || 0),
+              scoreDelta: scoreDelta,
+              distDelta: distDelta,
+              timeDelta: timeDelta,
+            };
+          }),
         }
         return processedDuel;
       })
       .filter((d): d is ProcessedDuel => d !== null)
       .sort((a, b) => b.date.getTime() - a.date.getTime())
-  }, [duels])
 
   const countryStats: CountryData[] = useMemo(() => {
     const stats: Record<string, {
@@ -243,7 +279,8 @@ export default function StatsDashboard() {
 
     return Object.entries(stats).map(([countryCode, data]) => ({
         countryCode,
-        ...data
+        ...data,
+        rounds: processedDuels.flatMap(duel => duel.rounds.filter(round => round.countryCode === countryCode))
     }));
   }, [processedDuels]);
 

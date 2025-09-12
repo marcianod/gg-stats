@@ -59,16 +59,34 @@ export interface RoundData {
   actual: {
     lat: number;
     lng: number;
+    heading?: number;
+    pitch?: number;
+    zoom?: number;
   };
   myGuess: {
     lat: number;
     lng: number;
+    score: number;
+    distance: number;
+    time: number;
   };
   opponentGuess: {
     lat: number;
     lng: number;
+    score: number;
+    distance: number;
+    time: number;
   };
   roundNumber: number;
+  countryCode: string;
+  duelId: string;
+  myPlayerId: string;
+  opponentPlayerId: string;
+  date: Date;
+  won: boolean;
+  scoreDelta: number;
+  distDelta: number;
+  timeDelta: number;
 }
 
 export interface CountryProperties {
@@ -86,4 +104,5 @@ export interface CountryData {
     draws: number;
     totalRounds: number;
     totalScoreDelta: number;
+    rounds: RoundData[]; // Add rounds property to CountryData
 }

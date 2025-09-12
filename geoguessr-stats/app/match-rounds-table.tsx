@@ -6,12 +6,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { type ProcessedDuel, type RoundData } from '../lib/types'
+import { type RoundData } from '../lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 
 interface MatchRoundsTableProps {
-  duel: ProcessedDuel;
+  rounds: RoundData[]; // Changed from duel: ProcessedDuel;
   onRoundSelect: (roundData: RoundData) => void;
   selectedRound: RoundData | null;
 }
@@ -19,36 +19,19 @@ interface MatchRoundsTableProps {
 /**
  * Displays a table with a round-by-round breakdown of a duel.
  */
-export function MatchRoundsTable({ duel, onRoundSelect, selectedRound }: MatchRoundsTableProps) {
-  const { rounds } = duel
+export function MatchRoundsTable({ rounds, onRoundSelect, selectedRound }: MatchRoundsTableProps) {
   
-  const myPlayer = duel.teams?.find(team => team.players.some(p => p.isMe))?.players[0];
-  const opponentPlayer = duel.teams?.find(team => !team.players.some(p => p.isMe))?.players[0];
-
-  const roundDetails = myPlayer?.guesses.map((playerGuess, index) => {
-    const opponentGuess = opponentPlayer?.guesses[index]
-    const roundInfo = rounds?.[index]
-
-    let roundData: RoundData | null = null;
-    if (roundInfo?.panorama && playerGuess && opponentGuess) {
-        roundData = {
-            actual: { lat: roundInfo.panorama.lat, lng: roundInfo.panorama.lng },
-            myGuess: { lat: playerGuess.lat, lng: playerGuess.lng },
-            opponentGuess: { lat: opponentGuess.lat, lng: opponentGuess.lng },
-            roundNumber: index + 1,
-        }
-    }
-
+  const roundDetails = rounds.map((round) => { // Iterate directly over rounds
     return {
-      roundNumber: index + 1,
-      country: roundInfo?.panorama?.countryCode || 'N/A',
-      playerScore: playerGuess.score,
-      opponentScore: opponentGuess?.score ?? 0,
-      distance: playerGuess.distance
-        ? `${(playerGuess.distance / 1000).toFixed(1)} km`
+      roundNumber: round.roundNumber,
+      country: round.countryCode.toUpperCase() || 'N/A', // Use countryCode from RoundData
+      playerScore: round.myGuess.score, // Use score from RoundData
+      opponentScore: round.opponentGuess.score, // Use score from RoundData
+      distance: round.myGuess.distance
+        ? `${(round.myGuess.distance / 1000).toFixed(1)} km`
         : 'N/A',
-      time: playerGuess.time ? `${playerGuess.time.toFixed(1)}s` : 'N/A',
-      roundData,
+      time: round.myGuess.time ? `${round.myGuess.time.toFixed(1)}s` : 'N/A',
+      roundData: round, // Pass the whole RoundData object
     }
   })
 
