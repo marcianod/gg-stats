@@ -139,7 +139,7 @@ export function MatchRoundsTable({ rounds, onRoundSelect, selectedRound }: Match
                     detail.roundData && 'cursor-pointer',
                     selectedRound?.duelId === detail.roundData.duelId && selectedRound?.date.getTime() === detail.date.getTime() && 'bg-accent'
                 )}>
-                <TableCell className="font-medium">{detail.date.toLocaleDateString()}</TableCell>
+                <TableCell className="font-medium">{detail.date.toLocaleString()}</TableCell>
                 <TableCell>{detail.country}</TableCell>
                 <TableCell className="text-right">{typeof detail.playerScore === 'number' ? detail.playerScore.toLocaleString() : 'N/A'}</TableCell>
                 <TableCell className="text-right">{typeof detail.opponentScore === 'number' ? detail.opponentScore.toLocaleString() : 'N/A'}</TableCell>
