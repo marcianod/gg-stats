@@ -27,7 +27,7 @@ const correctLocationIcon = new L.DivIcon({
 const myIcon = createPlayerIcon('#0d6efd');
 const oppIcon = createPlayerIcon('#dc3545');
 
-interface MapProps {
+export interface MapProps {
   activeTab: string;
   roundData: RoundData | null;
   geoJson: GeoJson | null;
@@ -121,19 +121,59 @@ function MapBounds({ roundData, selectedCountry, geoJson }: { roundData: RoundDa
 }
 
 export default function Map(props: MapProps) {
+  const { roundData } = props;
+
+  const handleMarkerClick = (url: string) => {
+    window.open(url, '_blank');
+  };
+
+  let myReplayUrl: string | undefined,
+      oppReplayUrl: string | undefined,
+      actualStreetViewUrl: string | undefined;
+
+  if (roundData) {
+    myReplayUrl = `https://www.geoguessr.com/duels/${roundData.duelId}/replay?player=${roundData.myPlayerId}&round=${roundData.roundNumber}&step=0`;
+    oppReplayUrl = `https://www.geoguessr.com/duels/${roundData.duelId}/replay?player=${roundData.opponentPlayerId}&round=${roundData.roundNumber}&step=0`;
+    actualStreetViewUrl = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${roundData.actual.lat},${roundData.actual.lng}`;
+    if (roundData.actual.heading !== undefined) {
+      actualStreetViewUrl += `&heading=${roundData.actual.heading}`;
+    }
+    if (roundData.actual.pitch !== undefined) {
+      actualStreetViewUrl += `&pitch=0`;
+    }
+  }
+
   return (
     <MapContainer center={[20, 0]} zoom={2} style={{ height: '100%', width: '100%', borderRadius: '0.5rem' }}>
       <TileLayer
         url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
       />
-  {props.roundData && (
+      {roundData && (
         <>
-          <Marker position={props.roundData.actual} icon={correctLocationIcon} />
-          <Marker position={props.roundData.myGuess} icon={myIcon} />
-          <Marker position={props.roundData.opponentGuess} icon={oppIcon} />
-          <Polyline positions={[props.roundData.myGuess, props.roundData.actual]} color="#0d6efd" dashArray="5, 5" />
-          <Polyline positions={[props.roundData.opponentGuess, props.roundData.actual]} color="#dc3545" dashArray="5, 5" />
+          {actualStreetViewUrl && (
+            <Marker
+              position={roundData.actual}
+              icon={correctLocationIcon}
+              eventHandlers={{ click: () => handleMarkerClick(actualStreetViewUrl!) }}
+            />
+          )}
+          {myReplayUrl && (
+            <Marker
+              position={roundData.myGuess}
+              icon={myIcon}
+              eventHandlers={{ click: () => handleMarkerClick(myReplayUrl!) }}
+            />
+          )}
+          {oppReplayUrl && (
+            <Marker
+              position={roundData.opponentGuess}
+              icon={oppIcon}
+              eventHandlers={{ click: () => handleMarkerClick(oppReplayUrl!) }}
+            />
+          )}
+          <Polyline positions={[roundData.myGuess, roundData.actual]} color="#0d6efd" dashArray="5, 5" />
+          <Polyline positions={[roundData.opponentGuess, roundData.actual]} color="#dc3545" dashArray="5, 5" />
         </>
       )}
       {props.activeTab === 'countries' && props.geoJson && (

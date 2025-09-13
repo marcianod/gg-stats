@@ -198,19 +198,22 @@ export default function StatsDashboard() {
           myScore, // This is already a number
           opponentScore,
           outcome: outcome,
+          gameMode: "unknown",
           rounds: duel.rounds && duel.rounds.map((round) => {
             const mePlayer = meTeam.players[0];
             const opponentPlayer = opponentTeam.players[0];
             const myGuess = mePlayer.guesses.find(g => g.roundNumber === round.roundNumber);
             const opponentGuess = opponentPlayer.guesses.find(g => g.roundNumber === round.roundNumber);
+            const myGuessTime = myGuess ? (new Date(myGuess.created as string).getTime() - new Date(round.startTime as string).getTime()) / 1000 : 0;
+            const opponentGuessTime = opponentGuess ? (new Date(opponentGuess.created as string).getTime() - new Date(round.startTime as string).getTime()) / 1000 : 0;
             const scoreDelta = (myGuess?.score || 0) - (opponentGuess?.score || 0);
             const distDelta = (myGuess?.distance || 0) - (opponentGuess?.distance || 0);
-            const timeDelta = ((myGuess?.time || 0) - (opponentGuess?.time || 0));
+            const timeDelta = myGuessTime - opponentGuessTime;
 
             return {
               actual: { lat: round.panorama?.lat || 0, lng: round.panorama?.lng || 0, heading: round.panorama?.heading, pitch: round.panorama?.pitch, zoom: round.panorama?.zoom },
-              myGuess: { lat: myGuess?.lat || 0, lng: myGuess?.lng || 0, score: myGuess?.score || 0, distance: myGuess?.distance || 0, time: myGuess?.time || 0 },
-              opponentGuess: { lat: opponentGuess?.lat || 0, lng: opponentGuess?.lng || 0, score: opponentGuess?.score || 0, distance: opponentGuess?.distance || 0, time: opponentGuess?.time || 0 },
+              myGuess: { lat: myGuess?.lat || 0, lng: myGuess?.lng || 0, score: myGuess?.score || 0, distance: myGuess?.distance || 0, time: myGuessTime },
+              opponentGuess: { lat: opponentGuess?.lat || 0, lng: opponentGuess?.lng || 0, score: opponentGuess?.score || 0, distance: opponentGuess?.distance || 0, time: opponentGuessTime },
               roundNumber: round.roundNumber,
               countryCode: round.panorama?.countryCode?.toLowerCase() || '',
               duelId: duel.gameId,
@@ -283,21 +286,7 @@ export default function StatsDashboard() {
             }
 
             // Add the round data to the country stats
-            stats[countryCode].rounds.push({ // The round object already contains all necessary data
-                actual: { lat: round.actual.lat || 0, lng: round.actual.lng || 0, heading: round.actual.heading, pitch: round.actual.pitch, zoom: round.actual.zoom },
-                myGuess: { lat: myGuess.lat || 0, lng: myGuess.lng || 0, score: myGuess.score || 0, distance: myGuess.distance || 0, time: myGuess.time || 0 },
-                opponentGuess: { lat: opponentGuess.lat || 0, lng: opponentGuess.lng || 0, score: opponentGuess.score || 0, distance: opponentGuess.distance || 0, time: opponentGuess.time || 0 },
-                roundNumber: round.roundNumber,
-                countryCode: countryCode,
-                duelId: duel.gameId,
-                myPlayerId: myPlayer.playerId,
-                opponentPlayerId: opponentPlayer.playerId,
-                date: new Date(round.date),
-                won: (myGuess.score || 0) > (opponentGuess.score || 0),
-                scoreDelta: scoreDelta,
-                distDelta: (myGuess.distance || 0) - (opponentGuess.distance || 0),
-                timeDelta: (myGuess.time || 0) - (opponentGuess.time || 0),
-            });
+            stats[countryCode].rounds.push(round);
         }
       });
     });
@@ -382,7 +371,7 @@ export default function StatsDashboard() {
                 <CardContent className="flex-grow overflow-y-auto">
                   {selectedDuel ? (
                     <>
-                      <MatchRoundsTable rounds={selectedDuel.rounds} onRoundSelect={setSelectedRoundData} selectedRound={selectedRoundData} />
+                      <MatchRoundsTable viewMode="matches" rounds={selectedDuel.rounds} onRoundSelect={setSelectedRoundData} selectedRound={selectedRoundData} />
                     </>
                   ) : (
                     <p className="text-sm text-muted-foreground">Details will appear here.</p>
@@ -419,7 +408,7 @@ export default function StatsDashboard() {
                       {selectedCountryRounds && selectedCountryRounds.length > 0 ? (
                         <div className="mt-4">
                           <h3 className="text-lg font-semibold mb-2">Rounds for {selectedCountry.countryCode.toUpperCase()}</h3>
-                          <MatchRoundsTable rounds={selectedCountryRounds} onRoundSelect={setSelectedRoundData} selectedRound={selectedRoundData} />
+                          <MatchRoundsTable viewMode="countries" rounds={selectedCountryRounds} onRoundSelect={setSelectedRoundData} selectedRound={selectedRoundData} />
                         </div>
                       ) : (
                         <p className="text-sm text-muted-foreground">No rounds for this country.</p>

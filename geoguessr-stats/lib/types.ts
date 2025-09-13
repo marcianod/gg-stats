@@ -14,6 +14,15 @@ export interface Player {
   playerId: string;
   guesses: Guess[];
   isMe?: boolean;
+  progressChange?: {
+    rankedSystemProgress?: {
+      ratingBefore?: number;
+      ratingAfter?: number;
+    };
+  };
+  rankedSystemProgress?: {
+    mmr?: number;
+  };
   [key: string]: unknown;
 }
 
@@ -68,6 +77,9 @@ export interface ProcessedDuel {
   myScore: number;
   opponentScore: number;
   outcome: "Win" | "Loss" | "Draw" | "Unknown";
+  gameMode: string;
+  mmr?: number;
+  mmrChange?: number;
 }
 
 export interface RoundData {
@@ -102,6 +114,9 @@ export interface RoundData {
   scoreDelta: number;
   distDelta: number;
   timeDelta: number;
+  multiplier?: number;
+  damage?: number;
+  gameMode?: string;
 }
 
 export interface CountryProperties {

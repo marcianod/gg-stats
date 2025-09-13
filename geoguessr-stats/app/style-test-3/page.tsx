@@ -10,15 +10,14 @@ import {
 } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { type Duel, type ProcessedDuel, type RoundData, type GeoJson, type CountryData } from '@/lib/types'
-import { MatchRoundsTable } from './match-rounds-table'
-import { RecentMatchesTable } from './recent-matches-table'
+import { MatchRoundsTable } from '../match-rounds-table'
+import { RecentMatchesTable } from '../recent-matches-table'
 import { SortableTable, type ColumnDef } from '@/components/ui/sortable-table'
 import { QueryBuilder } from '@/components/ui/query-builder'
 import { applyFilters, type Filter } from '@/lib/filters'
 import { LayoutDashboard, BarChart3, Settings } from 'lucide-react';
-import { type MapProps } from '../components/Map';
 
-const Map = dynamic<MapProps>(() => import('../components/Map'), {
+const Map = dynamic(() => import('../../components/Map'), {
   ssr: false,
 })
 
@@ -26,23 +25,15 @@ const Map = dynamic<MapProps>(() => import('../components/Map'), {
 const MY_PLAYER_ID = '608a7f9394d95300015224ac'
 
 function getGameMode(options?: { movementOptions?: { forbidMoving?: boolean; forbidZooming?: boolean; forbidPanning?: boolean; } }) {
-    if (!options?.movementOptions) return 'MOVE';
-    if (options.movementOptions.forbidMoving && options.movementOptions.forbidZooming) return 'NMPZ';
-    if (options.movementOptions.forbidMoving) return 'NM';
-    return 'MOVE';
+    if (!options?.movementOptions) return 'moving';
+    if (options.movementOptions.forbidMoving && options.movementOptions.forbidZooming) return 'nmpz';
+    if (options.movementOptions.forbidMoving) return 'nomove';
+    return 'moving';
 }
 
 import { getFlagEmoji } from '@/lib/utils';
 
-function CountryStatsTable({ stats, onCountrySelect, selectedCountry, geoJson }: { stats: CountryData[], onCountrySelect: (countryCode: string) => void, selectedCountry: CountryData | null, geoJson: GeoJson | null }) {
-    const countryNames = useMemo(() => {
-        if (!geoJson) return {};
-        return geoJson.features.reduce((acc, feature) => {
-            acc[feature.properties['ISO3166-1-Alpha-2'].toLowerCase()] = feature.properties.name;
-            return acc;
-        }, {} as Record<string, string>);
-    }, [geoJson]);
-
+function CountryStatsTable({ stats, onCountrySelect, selectedCountry }: { stats: CountryData[], onCountrySelect: (countryCode: string) => void, selectedCountry: CountryData | null }) {
     const columns: ColumnDef<CountryData>[] = [
         {
             accessorKey: 'countryCode',
@@ -50,45 +41,24 @@ function CountryStatsTable({ stats, onCountrySelect, selectedCountry, geoJson }:
             cell: (row) => (
                 <div className="flex items-center">
                     <span className="mr-2">{getFlagEmoji(row.countryCode)}</span>
-                    <span>{countryNames[row.countryCode.toLowerCase()] || row.countryCode.toUpperCase()}</span>
+                    <span>{row.countryCode.toUpperCase()}</span>
                 </div>
             ),
-            width: '40%',
+            width: '25%',
         },
         {
             accessorKey: 'winRate',
-            header: 'Win %',
+            header: 'Win Rate',
             cell: (row) => `${((row.wins / row.totalRounds) * 100).toFixed(1)}%`,
             className: 'text-right',
-            width: '15%',
+            width: '20%',
         },
         {
             accessorKey: 'avgScoreDelta',
-            header: 'Avg Δ',
-            cell: (row) => {
-                const avgScoreDelta = row.totalScoreDelta / row.totalRounds;
-                const textColor = avgScoreDelta > 0 ? 'text-green-600' : avgScoreDelta < 0 ? 'text-red-600' : '';
-                return <span className={textColor}>{avgScoreDelta.toFixed(0)}</span>;
-            },
+            header: 'Avg. Score Δ',
+            cell: (row) => `${(row.totalScoreDelta / row.totalRounds).toFixed(0)}`,
             className: 'text-right',
-            width: '15%',
-        },
-        {
-            accessorKey: 'totalScoreDelta',
-            header: 'Total Δ',
-            cell: (row) => {
-                const textColor = row.totalScoreDelta > 0 ? 'text-green-600' : row.totalScoreDelta < 0 ? 'text-red-600' : '';
-                return <span className={textColor}>{row.totalScoreDelta.toFixed(0)}</span>;
-            },
-            className: 'text-right',
-            width: '15%',
-        },
-        {
-            accessorKey: 'totalRounds',
-            header: 'R',
-            cell: (row) => row.totalRounds,
-            className: 'text-right',
-            width: '15%',
+            width: '20%',
         },
     ];
 
@@ -96,7 +66,6 @@ function CountryStatsTable({ stats, onCountrySelect, selectedCountry, geoJson }:
         <Card className="flex flex-col h-full">
             <CardHeader className="px-7 py-4">
                 <CardTitle className="text-lg">By Country</CardTitle>
-                <div className="text-sm text-muted-foreground">CountryStatsTable</div>
             </CardHeader>
             <CardContent className="flex-grow overflow-hidden p-0">
                 <SortableTable
@@ -214,11 +183,6 @@ export default function StyleTestPage3() {
                 outcome = 'Unknown';
             }
         }
-
-        const ratingBefore = mePlayer.progressChange?.rankedSystemProgress?.ratingBefore;
-        const ratingAfter = mePlayer.progressChange?.rankedSystemProgress?.ratingAfter;
-        const mmrChange = (ratingAfter !== undefined && ratingBefore !== undefined) ? ratingAfter - ratingBefore : undefined;
-
         const gameDate = duel.rounds?.[0]?.startTime
         const processedDuel: ProcessedDuel = {
           ...duel,
@@ -228,8 +192,7 @@ export default function StyleTestPage3() {
           opponentScore,
           outcome: outcome,
           gameMode: getGameMode(duel.options as any),
-          mmr: ratingAfter,
-          mmrChange: mmrChange,
+          mmr: mePlayer.rankedSystemProgress?.mmr,
           rounds: duel.rounds?.map((round) => {
             const myGuess = mePlayer.guesses.find(g => g.roundNumber === round.roundNumber);
             const opponentGuess = opponentPlayer.guesses.find(g => g.roundNumber === round.roundNumber);
@@ -240,13 +203,7 @@ export default function StyleTestPage3() {
             const distDelta = (myGuess?.distance || 0) - (opponentGuess?.distance || 0);
             const timeDelta = myGuessTime - opponentGuessTime;
             return {
-              actual: {
-                lat: round.panorama?.lat || 0,
-                lng: round.panorama?.lng || 0,
-                heading: round.panorama?.heading,
-                pitch: round.panorama?.pitch,
-                zoom: round.panorama?.zoom,
-              } as RoundData['actual'],
+              actual: { lat: round.panorama?.lat || 0, lng: round.panorama?.lng || 0, heading: round.panorama?.heading, pitch: round.panorama?.pitch, zoom: round.panorama?.zoom },
               myGuess: { lat: myGuess?.lat || 0, lng: myGuess?.lng || 0, score: myGuess?.score || 0, distance: myGuess?.distance || 0, time: myGuessTime },
               opponentGuess: { lat: opponentGuess?.lat || 0, lng: opponentGuess?.lng || 0, score: opponentGuess?.score || 0, distance: opponentGuess?.distance || 0, time: opponentGuessTime },
               roundNumber: round.roundNumber,
@@ -260,14 +217,23 @@ export default function StyleTestPage3() {
               distDelta: distDelta,
               timeDelta: timeDelta,
               multiplier: round.multiplier,
-              damage: (round.multiplier !== undefined && round.multiplier !== null) ? scoreDelta * (round.multiplier as number) : undefined,
-              gameMode: getGameMode(duel.options as any),
-            } as RoundData;
+              damage: scoreDelta * (round.multiplier || 1),
+            };
           }).filter((r): r is RoundData => r !== null),
         }
         return processedDuel;
       })
       .filter((d): d is ProcessedDuel => d !== null)
+      .sort((a, b) => a.date.getTime() - b.date.getTime())
+      .map((duel, index, allDuels) => {
+        if (index > 0) {
+          const prevDuel = allDuels[index - 1];
+          if (duel.mmr && prevDuel.mmr) {
+            duel.mmrChange = duel.mmr - prevDuel.mmr;
+          }
+        }
+        return duel;
+      })
       .sort((a, b) => b.date.getTime() - a.date.getTime());
   }, [duels]);
 
@@ -356,7 +322,6 @@ export default function StyleTestPage3() {
                 <Card className="flex flex-col h-full overflow-hidden">
                   <CardHeader className="px-4 py-3">
                     <CardTitle className="text-base">Matches</CardTitle>
-                    <div className="text-sm text-muted-foreground">RecentMatchesTable</div>
                   </CardHeader>
                   <CardContent className="flex-grow overflow-y-auto p-0">
                     {filteredDuels.length > 0 ? (
@@ -368,7 +333,7 @@ export default function StyleTestPage3() {
                 </Card>
               </TabsContent>
               <TabsContent value="countries" className="flex-grow overflow-hidden">
-                <CountryStatsTable stats={countryStats} onCountrySelect={handleCountrySelect} selectedCountry={selectedCountry} geoJson={geoJsonData} />
+                <CountryStatsTable stats={countryStats} onCountrySelect={handleCountrySelect} selectedCountry={selectedCountry} />
               </TabsContent>
             </Tabs>
           </div>
@@ -378,7 +343,6 @@ export default function StyleTestPage3() {
             <Card className="overflow-hidden h-1/2">
               <CardHeader className="px-4 py-3">
                 <CardTitle className="text-base">Map View</CardTitle>
-                <div className="text-sm text-muted-foreground">Map</div>
               </CardHeader>
               <CardContent className="h-full">
                 <Map activeTab={activeTab} roundData={selectedRoundData} geoJson={geoJsonData} countryStats={countryStats} selectedCountry={selectedCountry} onCountrySelect={handleCountrySelect} />
@@ -389,7 +353,6 @@ export default function StyleTestPage3() {
                 <CardTitle className="text-base">
                   {activeTab === 'matches' ? 'Match Details' : 'Country Details'}
                 </CardTitle>
-                <div className="text-sm text-muted-foreground">MatchRoundsTable</div>
               </CardHeader>
               <CardContent className="flex-grow overflow-y-auto p-1">
                 {activeTab === 'matches' && selectedDuel && (

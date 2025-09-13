@@ -10,7 +10,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { ArrowUpDown } from 'lucide-react';
+import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface ColumnDef<T> {
@@ -32,10 +32,11 @@ interface SortableTableProps<T> {
   onRowClick?: (row: T) => void;
   selectedRow?: T | null;
   initialSortKey: keyof T;
+  initialSortDirection?: 'ascending' | 'descending';
 }
 
-export function SortableTable<T>({ columns, data, onRowClick, selectedRow, initialSortKey }: SortableTableProps<T>) {
-  const [sortConfig, setSortConfig] = useState<SortConfig<T>>({ key: initialSortKey, direction: 'descending' });
+export function SortableTable<T>({ columns, data, onRowClick, selectedRow, initialSortKey, initialSortDirection = 'descending' }: SortableTableProps<T>) {
+  const [sortConfig, setSortConfig] = useState<SortConfig<T>>({ key: initialSortKey, direction: initialSortDirection });
 
   const sortedData = useMemo(() => {
     const sortableData = [...data];
@@ -68,17 +69,17 @@ export function SortableTable<T>({ columns, data, onRowClick, selectedRow, initi
     if (sortConfig.key !== column) {
       return <ArrowUpDown className="ml-2 h-4 w-4" />;
     }
-    return sortConfig.direction === 'ascending' ? ' 🔼' : ' 🔽';
+    return sortConfig.direction === 'ascending' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />;
   };
 
   return (
     <div className="relative h-full overflow-y-auto flex flex-col">
-      <Table>
+      <Table className="text-sm">
         <TableHeader className="sticky top-0 z-10 bg-card">
           <TableRow>
             {columns.map((column) => (
-              <TableHead key={column.accessorKey as string} style={{ width: column.width }} className={column.className}>
-                <Button variant="ghost" onClick={() => requestSort(column.accessorKey)}>
+              <TableHead key={column.accessorKey as string} style={{ width: column.width }} className={cn(column.className, "h-10 px-2")}>
+                <Button variant="ghost" onClick={() => requestSort(column.accessorKey)} className="px-2 py-1 h-auto">
                   {column.header}
                   {getSortIndicator(column.accessorKey)}
                 </Button>
@@ -93,11 +94,12 @@ export function SortableTable<T>({ columns, data, onRowClick, selectedRow, initi
               onClick={() => onRowClick?.(row)}
               className={cn(
                 onRowClick && 'cursor-pointer',
-                selectedRow === row && 'bg-accent'
+                selectedRow === row && 'bg-accent',
+                "h-10"
               )}
             >
               {columns.map((column) => (
-                <TableCell key={column.accessorKey as string} style={{ width: column.width }} className={column.className}>
+                <TableCell key={column.accessorKey as string} style={{ width: column.width }} className={cn(column.className, "py-1 px-1")}>
                   {column.cell ? column.cell(row) : (row[column.accessorKey] as React.ReactNode)}
                 </TableCell>
               ))}

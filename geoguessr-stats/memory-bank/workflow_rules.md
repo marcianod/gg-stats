@@ -5,7 +5,7 @@
 As a solo hobby project, the focus is on flexibility and ensuring stability before committing changes. The workflow is interactive.
 
 1.  **Local Development & Testing:**
-    *   I will make code changes and test them using the local development server (`npm run dev`).
+    *   I will make code changes and test them using the local development server (`npm run dev`). I will not do a browser check, the user will do this for me.
 
 2.  **Committing and Pushing:**
     *   **Upon your request**, I will stage, commit (with a descriptive message), and push the changes to the remote repository. I will not do this automatically.
