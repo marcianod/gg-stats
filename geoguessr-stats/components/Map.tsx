@@ -1,10 +1,12 @@
 'use client'
 
-import 'leaflet/dist/leaflet.css'
-import { MapContainer, TileLayer, Marker, Polyline, useMap, GeoJSON } from 'react-leaflet'
-import L from 'leaflet'
-import { useEffect, useRef } from 'react'
-import { RoundData, CountryData, GeoJson, CountryProperties } from '../lib/types'
+import 'leaflet/dist/leaflet.css';
+import 'leaflet.markercluster/dist/MarkerCluster.css';
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
+import { MapContainer, TileLayer, Marker, Polyline, useMap, GeoJSON, CircleMarker } from 'react-leaflet';
+import L from 'leaflet';
+import { useEffect, useRef, useState } from 'react';
+import { RoundData, CountryData, GeoJson, CountryProperties } from '../lib/types';
 import { Feature, FeatureCollection, Geometry } from 'geojson';
 
 // Custom icon definitions
@@ -28,16 +30,21 @@ const myIcon = createPlayerIcon('#0d6efd');
 const oppIcon = createPlayerIcon('#dc3545');
 
 export interface MapProps {
-  activeTab: string;
-  roundData: RoundData | null;
+  activeTab?: string;
+  roundData?: RoundData | null;
   geoJson: GeoJson | null;
-  countryStats: CountryData[];
-  selectedCountry: CountryData | null;
-  onCountrySelect: (countryCode: string) => void;
+  countryStats?: CountryData[];
+  selectedCountry?: CountryData | null;
+  onCountrySelect?: (countryCode: string) => void;
+  onCountryClick?: (countryCode: string) => void;
+  locations?: { lat: number; lng: number; heading?: number; pitch?: number; zoom?: number }[];
+  onLocationClick?: (location: { lat: number; lng: number; heading?: number; pitch?: number; zoom?: number }) => void;
+  cachedLocations?: { lat: number; lng: number }[];
+  activeLocation?: { lat: number; lng: number } | null;
 }
 
 function getColorForWinRate(winRate: number | undefined): string {
-    if (winRate === undefined) return '#e9ecef';
+    if (winRate === undefined) return 'transparent';
     if (winRate > 70) return '#1a9641';
     if (winRate > 60) return '#a6d96a';
     if (winRate > 50) return '#ffffbf';
@@ -45,7 +52,7 @@ function getColorForWinRate(winRate: number | undefined): string {
     return '#d7191c';
 }
 
-function ChoroplethLayer({ geoJson, countryStats, onCountrySelect, selectedCountry }: MapProps) {
+function ChoroplethLayer({ geoJson, countryStats, onCountrySelect, selectedCountry, onCountryClick }: MapProps) {
     const geoJsonLayer = useRef<L.GeoJSON | null>(null);
 
     const style = (feature: Feature<Geometry, CountryProperties> | undefined) => {
@@ -54,14 +61,14 @@ function ChoroplethLayer({ geoJson, countryStats, onCountrySelect, selectedCount
         }
         const properties = feature.properties as CountryProperties;
         const countryCode = (properties['ISO3166-1-Alpha-2'] as string).toLowerCase();
-        const stats = countryStats.find(c => c.countryCode === countryCode);
+        const stats = countryStats?.find(c => c.countryCode === countryCode);
         const winRate = stats ? (stats.wins / stats.totalRounds) * 100 : undefined;
         return {
             fillColor: getColorForWinRate(winRate),
-            weight: 1,
-            opacity: 1,
+            weight: 0,
+            opacity: 0,
             color: 'white',
-            fillOpacity: 0.7
+            fillOpacity: 0
         };
     };
 
@@ -72,7 +79,14 @@ function ChoroplethLayer({ geoJson, countryStats, onCountrySelect, selectedCount
         const properties = feature.properties as CountryProperties;
         const countryCode = (properties['ISO3166-1-Alpha-2'] as string).toLowerCase();
         layer.on({
-            click: () => onCountrySelect(countryCode)
+            click: () => {
+                if (onCountrySelect) {
+                    onCountrySelect(countryCode);
+                }
+                if (onCountryClick) {
+                    onCountryClick(countryCode);
+                }
+            }
         });
     };
 
@@ -91,7 +105,63 @@ function ChoroplethLayer({ geoJson, countryStats, onCountrySelect, selectedCount
     return <GeoJSON ref={geoJsonLayer} data={geoJson as FeatureCollection<Geometry, CountryProperties>} style={style} onEachFeature={onEachFeature} />;
 }
 
-function MapBounds({ roundData, selectedCountry, geoJson }: { roundData: RoundData | null, selectedCountry: CountryData | null, geoJson: GeoJson | null }) {
+function HeatmapMarkers({ locations, onLocationClick, cachedLocations, activeLocation }: MapProps) {
+  const map = useMap();
+  const [zoomLevel, setZoomLevel] = useState(map.getZoom());
+
+  useEffect(() => {
+    const handleZoom = () => {
+      setZoomLevel(map.getZoom());
+    };
+    map.on('zoomend', handleZoom);
+    return () => {
+      map.off('zoomend', handleZoom);
+    };
+  }, [map]);
+
+  const getPathOptions = (loc: { lat: number; lng: number; }, cacheIndex: number, isActive: boolean) => {
+    const baseRadius = 0.5 + (zoomLevel / 18) * 15;
+    const baseOpacity = 0.1 + (zoomLevel / 18) * 0.8;
+
+    if (isActive) {
+      return { radius: baseRadius + 2, color: '#ff0000', fillColor: '#ff0000', fillOpacity: 1.0 };
+    }
+    if (cacheIndex !== -1) {
+      const factor = cacheIndex / Math.max(1, (cachedLocations?.length || 1) - 1);
+      const g = 255 * factor;
+      return { radius: baseRadius, color: `rgb(255, ${g}, 0)`, fillColor: `rgb(255, ${g}, 0)`, fillOpacity: baseOpacity + 0.1 };
+    }
+    return { radius: baseRadius, color: 'blue', fillColor: 'blue', fillOpacity: baseOpacity };
+  };
+
+  return (
+    <>
+      {locations?.map((loc, index) => {
+        const cacheIndex = cachedLocations?.findIndex(l => l.lat === loc.lat && l.lng === loc.lng) ?? -1;
+        const isActive = activeLocation?.lat === loc.lat && activeLocation?.lng === loc.lng;
+        const pathOptions = getPathOptions(loc, cacheIndex, isActive);
+
+        return (
+          <CircleMarker
+            key={index}
+            center={[loc.lat, loc.lng]}
+            radius={pathOptions.radius}
+            pathOptions={pathOptions}
+            eventHandlers={{
+              click: () => {
+                if (onLocationClick) {
+                  onLocationClick(loc);
+                }
+              },
+            }}
+          />
+        );
+      })}
+    </>
+  );
+}
+
+function MapBounds({ roundData, selectedCountry, geoJson, locations }: { roundData: RoundData | null, selectedCountry: CountryData | null, geoJson: GeoJson | null, locations?: { lat: number; lng: number }[] }) {
   const map = useMap();
 
   useEffect(() => {
@@ -106,7 +176,7 @@ function MapBounds({ roundData, selectedCountry, geoJson }: { roundData: RoundDa
   }, [map, roundData]);
 
   useEffect(() => {
-    if (selectedCountry && geoJson && !roundData) {
+    if (selectedCountry && geoJson && !roundData && !locations) {
         const countryFeature = geoJson.features.find((feature: Feature<Geometry, CountryProperties>) => (feature.properties['ISO3166-1-Alpha-2'] as string).toLowerCase() === selectedCountry.countryCode);
         if (countryFeature) {
             const bounds = L.geoJSON(countryFeature).getBounds();
@@ -115,7 +185,7 @@ function MapBounds({ roundData, selectedCountry, geoJson }: { roundData: RoundDa
     } else if (!roundData && !selectedCountry) {
         map.setView([20, 0], 2);
     }
-  }, [map, selectedCountry, geoJson, roundData]);
+  }, [map, selectedCountry, geoJson, roundData, locations]);
 
   return null;
 }
@@ -146,8 +216,9 @@ export default function Map(props: MapProps) {
   return (
     <MapContainer center={[20, 0]} zoom={2} style={{ height: '100%', width: '100%', borderRadius: '0.5rem' }}>
       <TileLayer
-        url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+        url="https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&hl=en"
+        attribution='&copy; <a href="https://www.google.com/maps">Google Maps</a>'
+        subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
       />
       {roundData && (
         <>
@@ -176,10 +247,11 @@ export default function Map(props: MapProps) {
           <Polyline positions={[roundData.opponentGuess, roundData.actual]} color="#dc3545" dashArray="5, 5" />
         </>
       )}
-      {props.activeTab === 'countries' && props.geoJson && (
+      {(props.activeTab === 'countries' || props.onCountryClick) && props.geoJson && (
           <ChoroplethLayer {...props} />
       )}
-      <MapBounds roundData={props.roundData} selectedCountry={props.selectedCountry} geoJson={props.geoJson} />
+      <HeatmapMarkers {...props} />
+      <MapBounds roundData={props.roundData ?? null} selectedCountry={props.selectedCountry ?? null} geoJson={props.geoJson} locations={props.locations} />
     </MapContainer>
   )
 }

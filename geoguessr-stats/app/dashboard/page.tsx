@@ -159,7 +159,12 @@ export default function DashboardPage() {
       if (value === 'countries') {
         setSelectedDuel(null);
         setSelectedRoundData(null);
-      } else {
+      } else if (value === 'matches') {
+        setSelectedCountry(null);
+        setSelectedCountryRounds(null);
+      } else if (value === 'analysis') {
+        setSelectedDuel(null);
+        setSelectedRoundData(null);
         setSelectedCountry(null);
         setSelectedCountryRounds(null);
       }

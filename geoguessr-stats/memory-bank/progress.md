@@ -76,3 +76,20 @@
 *   [x] Created a new dashboard layout with a persistent sidebar for navigation.
 *   [x] Restructured the application routes to have a main dashboard and a data explorer.
 *   [x] Updated the root page to redirect to the new dashboard.
+
+### Confusion Matrix
+
+*   [x] Added the confusion matrix from the old version to the current dashboard.
+*   [x] Optimized the confusion matrix calculation for better performance.
+*   [x] Moved the confusion matrix to its own page.
+*   [x] Added a link to the new page in the sidebar.
+
+### "Vibe Check" Page Enhancements
+
+*   [x] Replaced static Street View images with interactive panoramas.
+*   [x] Implemented a draggable and resizable window for the Street View.
+*   [x] Added a lock feature to the Street View window.
+*   [x] Implemented a 10-location cache for the Street View.
+*   [x] Added dynamic marker coloring to visualize cache status.
+*   [x] Corrected the panorama orientation using duel data.
+*   [x] Adjusted the map to make countries without data transparent.

@@ -94,3 +94,69 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Confusion Matrix Styles */
+.confusion-matrix-container {
+  background-color: white;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-top: 1rem;
+  overflow-x: auto;
+}
+.confusion-matrix {
+  font-size: 0.85rem;
+  border-collapse: collapse;
+  width: 100%;
+}
+.confusion-matrix th,
+.confusion-matrix td {
+  border: 1px solid #e9ecef;
+  padding: 0.3rem;
+  text-align: center;
+  min-width: 50px;
+}
+.confusion-matrix th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.confusion-matrix th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 11;
+  background-color: #f8f9fa;
+}
+.confusion-matrix td:first-child {
+  position: sticky;
+  left: 0;
+  background-color: #f8f9fa;
+  font-weight: 600;
+  z-index: 9;
+}
+.confusion-cell {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.confusion-cell:hover {
+  background-color: #e7f1ff !important;
+  transform: scale(1.1);
+}
+.confusion-cell-0 { background-color: #ffffff; }
+.confusion-cell-1 { background-color: #fff5f5; }
+.confusion-cell-2 { background-color: #ffe4e4; }
+.confusion-cell-3 { background-color: #ffd4d4; }
+.confusion-cell-4 { background-color: #ffc4c4; }
+.confusion-cell-5 { background-color: #ffb3b3; }
+.confusion-cell-high { background-color: #ff9999; }
+.confusion-summary {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border-radius: 0.5rem;
+}
+.confusion-stat {
+  display: inline-block;
+  margin: 0.5rem 1rem 0.5rem 0;
+}

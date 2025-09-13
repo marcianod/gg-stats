@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Settings, Table } from 'lucide-react';
+import { LayoutDashboard, Settings, Table, Shuffle, Camera } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function DashboardLayout({
@@ -15,6 +15,8 @@ export default function DashboardLayout({
   const navItems = [
     { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { href: '/dashboard/explorer', icon: Table, label: 'Data Explorer' },
+    { href: '/dashboard/confusion-matrix', icon: Shuffle, label: 'Confusion Matrix' },
+    { href: '/dashboard/vibe', icon: Camera, label: 'Vibe Check' },
     { href: '/dashboard/settings', icon: Settings, label: 'Settings' },
   ];
 
