@@ -2,18 +2,13 @@
 
 ## Development and Committing Workflow
 
-As a solo hobby project, the focus is on flexibility and ensuring stability before committing changes.
+As a solo hobby project, the focus is on flexibility and ensuring stability before committing changes. The workflow is interactive.
 
 1.  **Local Development & Testing:**
-    *   All changes and new features must be thoroughly tested locally using the development server (`npm run dev`).
-    *   Verify the changes in a browser to ensure they work as expected and do not introduce any regressions.
+    *   I will make code changes and test them using the local development server (`npm run dev`).
 
-2.  **Commit Source Code:**
-    *   Once the changes are verified locally, commit the *source code* with a clear and descriptive commit message.
-    *   Commits should represent a complete, logical unit of work (e.g., a bug fix or a new feature).
-
-3.  **Push to Remote:**
-    *   After committing, push the changes to the remote repository to back them up and keep the history up-to-date.
+2.  **Committing and Pushing:**
+    *   **Upon your request**, I will stage, commit (with a descriptive message), and push the changes to the remote repository. I will not do this automatically.
 
 ## Coding Conventions
 

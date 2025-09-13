@@ -30,23 +30,27 @@ function CountryStatsTable({ stats, onCountrySelect, selectedCountry }: { stats:
             accessorKey: 'countryCode',
             header: 'Country',
             cell: (row) => row.countryCode.toUpperCase(),
+            width: '25%',
         },
         {
             accessorKey: 'winRate',
             header: 'Win Rate',
             cell: (row) => `${((row.wins / row.totalRounds) * 100).toFixed(1)}%`,
             className: 'text-right',
+            width: '25%',
         },
         {
             accessorKey: 'avgScoreDelta',
             header: 'Avg. Score Δ',
             cell: (row) => `${(row.totalScoreDelta / row.totalRounds).toFixed(0)}`,
             className: 'text-right',
+            width: '25%',
         },
         {
             accessorKey: 'totalRounds',
             header: 'Total Rounds',
             className: 'text-right',
+            width: '25%',
         },
     ];
 
@@ -54,9 +58,6 @@ function CountryStatsTable({ stats, onCountrySelect, selectedCountry }: { stats:
         <Card className="flex flex-col h-full">
             <CardHeader className="px-7">
                 <CardTitle>Stats By Country</CardTitle>
-                <CardDescription>
-                    Aggregated statistics for each country.
-                </CardDescription>
             </CardHeader>
             <CardContent className="flex-grow overflow-hidden p-0">
                 <SortableTable
@@ -331,24 +332,21 @@ export default function StatsDashboard() {
   }
 
   return (
-    <div className="flex flex-col gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
+    <div className="flex flex-col flex-1 gap-4 md:gap-8 overflow-hidden">
       <QueryBuilder setFilters={setFilters} />
-      <div className="grid flex-1 items-start gap-4 overflow-hidden lg:grid-cols-3 xl:grid-cols-3">
-        <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-1 h-full">
-          <Tabs defaultValue="matches" onValueChange={handleTabChange} className="flex flex-col h-full">
+      <div className="grid flex-1 gap-4 lg:grid-cols-3 xl:grid-cols-3 overflow-hidden">
+        <div className="flex flex-col gap-4 overflow-hidden">
+          <Tabs defaultValue="matches" onValueChange={handleTabChange} className="flex flex-col flex-grow h-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="matches">Recent Matches</TabsTrigger>
               <TabsTrigger value="countries">By Country</TabsTrigger>
             </TabsList>
-            <TabsContent value="matches" className="flex-grow overflow-y-auto">
-              <Card className="flex flex-col h-full">
+            <TabsContent value="matches" className="flex-grow overflow-hidden">
+              <Card className="flex flex-col h-full overflow-hidden">
                 <CardHeader className="px-7">
                   <CardTitle>Matches</CardTitle>
-                  <CardDescription>
-                    A list of your recent GeoGuessr duels. ({processedDuels.length} games loaded)
-                  </CardDescription>
                 </CardHeader>
-                <CardContent className="flex-grow overflow-hidden p-0">
+                <CardContent className="flex-grow overflow-y-auto p-0">
                   {filteredDuels.length > 0 ? (
                     <RecentMatchesTable duels={filteredDuels} onDuelSelect={handleDuelSelect} selectedDuel={selectedDuel} />
                   ) : (
@@ -359,54 +357,47 @@ export default function StatsDashboard() {
                 </CardContent>
               </Card>
             </TabsContent>
-            <TabsContent value="countries" className="flex-grow overflow-y-auto">
+            <TabsContent value="countries" className="flex-grow overflow-hidden">
               <CountryStatsTable stats={countryStats} onCountrySelect={handleCountrySelect} selectedCountry={selectedCountry} />
             </TabsContent>
           </Tabs>
         </div>
-        <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2 h-full">
+        <div className="flex flex-col gap-4 lg:col-span-2 overflow-hidden">
           {activeTab === 'matches' && (
-            <Card className="flex flex-col h-full">
-              <CardHeader>
-                <CardTitle>Match Details</CardTitle>
-                <CardDescription>
-                  {selectedDuel
-                    ? selectedDuel.options?.map?.name ?? 'Unknown Map'
-                    : 'Select a match from the list to see its details.'}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex-grow overflow-hidden p-0">
-                <div className="flex flex-col h-full">
+            <div className="flex flex-col gap-4 h-full overflow-hidden">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Map View</CardTitle>
+                </CardHeader>
+                <CardContent>
                   <div className="w-full h-96">
                     <Map activeTab={activeTab} roundData={selectedRoundData} geoJson={geoJsonData} countryStats={countryStats} selectedCountry={selectedCountry} onCountrySelect={handleCountrySelect} />
                   </div>
-                  <div className="flex-grow overflow-y-auto p-7">
-                    {selectedDuel ? (
-                      <>
-                        <p>Final Score: {selectedDuel.myScore} - {selectedDuel.opponentScore}</p>
-                        <p>Result: {selectedDuel.outcome}</p>
-                        <MatchRoundsTable rounds={selectedDuel.rounds} onRoundSelect={setSelectedRoundData} selectedRound={selectedRoundData} />
-                      </>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">Details will appear here.</p>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+              <Card className="flex flex-col flex-grow overflow-hidden">
+                <CardHeader>
+                  <CardTitle>Match Details</CardTitle>
+                </CardHeader>
+                <CardContent className="flex-grow overflow-y-auto">
+                  {selectedDuel ? (
+                    <>
+                      <MatchRoundsTable rounds={selectedDuel.rounds} onRoundSelect={setSelectedRoundData} selectedRound={selectedRoundData} />
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Details will appear here.</p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           )}
           {activeTab === 'countries' && (
-            <Card className="flex flex-col h-full">
-              <CardHeader>
-                <CardTitle>Country Details</CardTitle>
-                <CardDescription>
-                  {selectedCountry
-                    ? `Stats for ${selectedCountry.countryCode.toUpperCase()}`
-                    : 'Select a country to see details.'}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex-grow overflow-hidden p-0">
-                <div className="flex flex-col h-full">
+            <div className="flex flex-col gap-4 h-full overflow-hidden">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Map View</CardTitle>
+                </CardHeader>
+                <CardContent>
                   <div className="w-full h-96">
                     <Map
                       activeTab={activeTab}
@@ -416,27 +407,32 @@ export default function StatsDashboard() {
                       selectedCountry={selectedCountry}
                       onCountrySelect={handleCountrySelect} />
                   </div>
-                  <div className="flex-grow overflow-y-auto p-7">
-                    {selectedCountry ? (
-                      <div>
-                        {selectedCountryRounds && selectedCountryRounds.length > 0 ? (
-                          <div className="mt-4">
-                            <h3 className="text-lg font-semibold mb-2">Rounds for {selectedCountry.countryCode.toUpperCase()}</h3>
-                            <MatchRoundsTable rounds={selectedCountryRounds} onRoundSelect={setSelectedRoundData} selectedRound={selectedRoundData} />
-                          </div>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">No rounds for this country.</p>
-                        )}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">
-                        Details will appear here.
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+              <Card className="flex flex-col flex-grow overflow-hidden">
+                <CardHeader>
+                  <CardTitle>Country Details</CardTitle>
+                </CardHeader>
+                <CardContent className="flex-grow overflow-y-auto">
+                  {selectedCountry ? (
+                    <div>
+                      {selectedCountryRounds && selectedCountryRounds.length > 0 ? (
+                        <div className="mt-4">
+                          <h3 className="text-lg font-semibold mb-2">Rounds for {selectedCountry.countryCode.toUpperCase()}</h3>
+                          <MatchRoundsTable rounds={selectedCountryRounds} onRoundSelect={setSelectedRoundData} selectedRound={selectedRoundData} />
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No rounds for this country.</p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Details will appear here.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           )}
         </div>
       </div>

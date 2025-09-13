@@ -23,3 +23,12 @@
 *   [x] Identified and removed `h-screen` from `app/stats-dashboard.tsx`.
 *   [x] Verified the fix by launching the application and scrolling.
 *   [x] Committed and pushed the changes to the remote repository.
+
+## In-Progress Tasks
+
+### Dynamic Layout Refactor
+
+*   [x] Split the right-side panel into two dedicated cards for the map and details.
+*   [x] Implemented a fixed table header with a scrollable body.
+*   [x] Attempted to create a dynamic layout where panels resize with the viewport.
+*   **Unresolved Issue:** The current implementation locks the page from scrolling and has broken the table's scrollability. Further work is needed to achieve the desired dynamic layout.

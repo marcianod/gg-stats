@@ -14,3 +14,4 @@ The target audience for this application is active GeoGuessr players who are int
 *   As a user, I want to view detailed statistics for each match, including the rounds, scores, and locations, so I can understand what happened in the game.
 *   As a user, I want to see my aggregated statistics by country, so I can identify which countries I'm good at and which ones I need to practice.
 *   As a user, I want to filter my match history so I can focus on specific types of games or maps.
+*   As a user, I want the layout to be responsive and dynamically adjust to my screen size, so I can have a good user experience on any device.

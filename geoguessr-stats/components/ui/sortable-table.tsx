@@ -18,6 +18,7 @@ export interface ColumnDef<T> {
   header: string;
   cell?: (row: T) => React.ReactNode;
   className?: string;
+  width?: string;
 }
 
 interface SortConfig<T> {
@@ -71,12 +72,12 @@ export function SortableTable<T>({ columns, data, onRowClick, selectedRow, initi
   };
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="relative h-full overflow-y-auto flex flex-col">
       <Table>
-        <TableHeader className="sticky top-0 z-10 bg-background">
+        <TableHeader className="sticky top-0 z-10 bg-card">
           <TableRow>
             {columns.map((column) => (
-              <TableHead key={column.accessorKey as string} className={column.className}>
+              <TableHead key={column.accessorKey as string} style={{ width: column.width }} className={column.className}>
                 <Button variant="ghost" onClick={() => requestSort(column.accessorKey)}>
                   {column.header}
                   {getSortIndicator(column.accessorKey)}
@@ -96,7 +97,7 @@ export function SortableTable<T>({ columns, data, onRowClick, selectedRow, initi
               )}
             >
               {columns.map((column) => (
-                <TableCell key={column.accessorKey as string} className={column.className}>
+                <TableCell key={column.accessorKey as string} style={{ width: column.width }} className={column.className}>
                   {column.cell ? column.cell(row) : (row[column.accessorKey] as React.ReactNode)}
                 </TableCell>
               ))}

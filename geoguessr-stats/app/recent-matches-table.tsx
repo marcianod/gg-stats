@@ -15,15 +15,18 @@ export function RecentMatchesTable({ duels, onDuelSelect, selectedDuel }: Recent
       accessorKey: 'date',
       header: 'Date',
       cell: (row) => row.date.toLocaleDateString(),
+      width: '33%',
     },
     {
       accessorKey: 'mapName',
       header: 'Map',
       cell: (row) => row.options?.map?.name ?? 'Unknown Map',
+      width: '33%',
     },
     {
       accessorKey: 'outcome',
       header: 'Result',
+      width: '33%',
     },
   ];
 

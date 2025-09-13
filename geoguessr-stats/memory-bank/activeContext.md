@@ -2,13 +2,13 @@
 
 ## Current Focus
 
-The current focus is on establishing a baseline understanding of the existing codebase and architecture. The primary activity is to populate the `memory-bank` with comprehensive documentation to facilitate future development.
+The current focus is on refactoring the main dashboard layout to be more dynamic and user-friendly. This involves creating a two-panel layout for the map and details, and ensuring that the tables within these panels are scrollable and resize correctly with the viewport.
 
 ## Immediate Goals
 
-*   Complete the initialization of the `memory-bank` by populating all relevant files.
-*   Establish a clear set of workflow rules and coding conventions.
+*   Resolve the outstanding issues with the dynamic layout, specifically the page scrolling and table scrollability.
+*   Achieve a state where the layout is fully responsive and works as expected on different screen sizes.
 
 ## Next Steps
 
-Once the memory bank is fully initialized, the next steps will involve identifying areas for improvement in the existing codebase, such as enhancing performance, adding new features, or improving the user experience.
+Once the layout issues are resolved, the next steps will be to commit the changes and then move on to other improvements, such as adding new features or enhancing the existing ones.
