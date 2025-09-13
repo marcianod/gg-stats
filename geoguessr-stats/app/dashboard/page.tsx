@@ -10,14 +10,14 @@ import {
 } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { type Duel, type ProcessedDuel, type RoundData, type GeoJson, type CountryData } from '@/lib/types'
-import { MatchRoundsTable } from '../match-rounds-table'
-import { RecentMatchesTable } from '../recent-matches-table'
+import { MatchRoundsTable } from '@/app/match-rounds-table'
+import { RecentMatchesTable } from '@/app/recent-matches-table'
 import { SortableTable, type ColumnDef } from '@/components/ui/sortable-table'
 import { QueryBuilder } from '@/components/ui/query-builder'
 import { applyFilters, type Filter } from '@/lib/filters'
-import { type MapProps } from '../../components/Map';
+import { type MapProps } from '@/components/Map';
 
-const Map = dynamic<MapProps>(() => import('../../components/Map'), {
+const Map = dynamic<MapProps>(() => import('@/components/Map'), {
   ssr: false,
 })
 
