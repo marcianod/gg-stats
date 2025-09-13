@@ -199,7 +199,7 @@ export default function StatsDashboard() {
           opponentScore,
           outcome: outcome,
           gameMode: "unknown",
-          rounds: duel.rounds && duel.rounds.map((round) => {
+          rounds: duel.rounds?.map((round): RoundData | null => {
             const mePlayer = meTeam.players[0];
             const opponentPlayer = opponentTeam.players[0];
             const myGuess = mePlayer.guesses.find(g => g.roundNumber === round.roundNumber);
@@ -226,8 +226,8 @@ export default function StatsDashboard() {
               scoreDelta: scoreDelta,
               distDelta: distDelta,
               timeDelta: timeDelta,
-            };
-          }),
+            } as RoundData;
+          }).filter((r): r is RoundData => r !== null),
         }
         return processedDuel;
       })
