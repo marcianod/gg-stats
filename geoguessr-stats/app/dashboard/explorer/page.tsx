@@ -108,7 +108,7 @@ export default function DataExplorerPage() {
     fetchData();
   }, []);
 
-  const handleFilterChange = (columnId: keyof AllRoundsData, selectedValues: any[], type: FilterType = 'include') => {
+  const handleFilterChange = (columnId: keyof AllRoundsData, selectedValues: (string | number | boolean)[], type: FilterType = 'include') => {
     setFilters(prevFilters => {
       const otherFilters = prevFilters.filter(f => f.id !== columnId);
       if (selectedValues.length > 0) {
@@ -122,12 +122,14 @@ export default function DataExplorerPage() {
     const value = row[column.accessorKey];
     if (value === undefined || value === null) return null;
 
+    const filterValue = value instanceof Date ? value.toISOString() : value;
+
     return (
       <ContextMenuContent>
-        <ContextMenuItem onClick={() => handleFilterChange(column.accessorKey, [value], 'include')}>
+        <ContextMenuItem onClick={() => handleFilterChange(column.accessorKey, [filterValue], 'include')}>
           Include {String(value)}
         </ContextMenuItem>
-        <ContextMenuItem onClick={() => handleFilterChange(column.accessorKey, [value], 'exclude')}>
+        <ContextMenuItem onClick={() => handleFilterChange(column.accessorKey, [filterValue], 'exclude')}>
           Exclude {String(value)}
         </ContextMenuItem>
       </ContextMenuContent>
@@ -151,7 +153,7 @@ export default function DataExplorerPage() {
             columnId="mapName"
             columnName="Map"
             data={allRounds}
-            activeFilters={filters.find(f => f.id === 'mapName')?.value as any[] ?? []}
+            activeFilters={filters.find(f => f.id === 'mapName')?.value ?? []}
             onFilterChange={handleFilterChange}
           />
         </div>
@@ -168,7 +170,7 @@ export default function DataExplorerPage() {
             columnId="countryCode"
             columnName="Country"
             data={allRounds}
-            activeFilters={filters.find(f => f.id === 'countryCode')?.value as any[] ?? []}
+            activeFilters={filters.find(f => f.id === 'countryCode')?.value ?? []}
             onFilterChange={handleFilterChange}
           />
         </div>
@@ -199,7 +201,7 @@ export default function DataExplorerPage() {
             columnId="gameMode"
             columnName="Mode"
             data={allRounds}
-            activeFilters={filters.find(f => f.id === 'gameMode')?.value as any[] ?? []}
+            activeFilters={filters.find(f => f.id === 'gameMode')?.value ?? []}
             onFilterChange={handleFilterChange}
           />
         </div>
@@ -215,7 +217,7 @@ export default function DataExplorerPage() {
             columnId="opponentId"
             columnName="Opponent"
             data={allRounds}
-            activeFilters={filters.find(f => f.id === 'opponentId')?.value as any[] ?? []}
+            activeFilters={filters.find(f => f.id === 'opponentId')?.value ?? []}
             onFilterChange={handleFilterChange}
           />
         </div>
