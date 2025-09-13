@@ -88,12 +88,12 @@ export default function StatsDashboard() {
     const fetchData = async () => {
       try {
         const [duelsResponse, geoJsonReponse] = await Promise.all([
-          fetch('/geoguessr_stats.json'),
-          fetch('/countries.geojson'),
+          fetch('/data/geoguessr_stats.json'),
+          fetch('/data/countries.geojson'),
         ]);
 
         if (!duelsResponse.ok) {
-          throw new Error(`HTTP error! status: ${duelsResponse.status} for duels.json`);
+          throw new Error(`HTTP error! status: ${duelsResponse.status} for geoguessr_stats.json`);
         }
         if (!geoJsonReponse.ok) {
           throw new Error(`HTTP error! status: ${geoJsonReponse.status} for countries.geojson`);
