@@ -11,8 +11,6 @@ import {
 } from '@/components/ui/table';
 import {
   ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
 import { Button } from '@/components/ui/button';

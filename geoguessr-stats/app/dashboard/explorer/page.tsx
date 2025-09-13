@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Duel, AllRoundsData, Player, Round } from '@/lib/types';
+import { Duel, AllRoundsData, Round } from '@/lib/types';
 import { SortableTable, ColumnDef } from '@/components/ui/sortable-table';
 import { Filter, applyFilters, FilterType } from '@/lib/filters';
 import { FilterPopover } from '@/components/ui/filter-popover';
@@ -13,7 +13,7 @@ import {
 
 const MY_PLAYER_ID = '608a7f9394d95300015224ac';
 
-function getGameMode(options?: { movementOptions?: { forbidMoving?: boolean; forbidZooming?: boolean; forbidPanning?: boolean; } }) {
+function getGameMode(options?: { map?: { name?: string; }; movementOptions?: { forbidMoving?: boolean; forbidZooming?: boolean; forbidPanning?: boolean; }; }) {
     if (!options?.movementOptions) return 'MOVE';
     if (options.movementOptions.forbidMoving && options.movementOptions.forbidZooming) return 'NMPZ';
     if (options.movementOptions.forbidMoving) return 'NM';
@@ -69,7 +69,7 @@ const processAllRoundsData = (duels: Duel[], myPlayerId: string): AllRoundsData[
         mmr: me.rankedSystemProgress?.mmr,
         mmrChange: (me.progressChange?.rankedSystemProgress?.ratingAfter ?? 0) - (me.progressChange?.rankedSystemProgress?.ratingBefore ?? 0),
         opponentId: opponent?.playerId,
-        gameMode: getGameMode(duel.options as any),
+        gameMode: getGameMode(duel.options),
         multiplier: round.multiplier as number | undefined,
         damage: round.multiplier ? scoreDelta * (round.multiplier as number) : undefined,
       });
@@ -108,7 +108,7 @@ export default function DataExplorerPage() {
     fetchData();
   }, []);
 
-  const handleFilterChange = (columnId: keyof AllRoundsData, selectedValues: (string | number | boolean)[], type: FilterType = 'include') => {
+  const handleFilterChange = (columnId: keyof AllRoundsData, selectedValues: (string | number | boolean | Date | undefined)[], type: FilterType = 'include') => {
     setFilters(prevFilters => {
       const otherFilters = prevFilters.filter(f => f.id !== columnId);
       if (selectedValues.length > 0) {

@@ -12,8 +12,8 @@ interface FilterPopoverProps<T> {
   columnId: keyof T;
   columnName: string;
   data: T[];
-  activeFilters: any[]; // Changed to any[] to handle different value types
-  onFilterChange: (columnId: keyof T, selectedValues: any[]) => void;
+  activeFilters: (T[keyof T])[];
+  onFilterChange: (columnId: keyof T, selectedValues: (T[keyof T])[]) => void;
 }
 
 export function FilterPopover<T>({
@@ -30,9 +30,9 @@ export function FilterPopover<T>({
     return Array.from(values);
   }, [data, columnId]);
 
-  const [selectedValues, setSelectedValues] = useState<Set<keyof T>>(new Set(activeFilters));
+  const [selectedValues, setSelectedValues] = useState<Set<T[keyof T]>>(new Set(activeFilters));
 
-  const handleCheckboxChange = (value: keyof T) => {
+  const handleCheckboxChange = (value: T[keyof T]) => {
     const newSelectedValues = new Set(selectedValues);
     if (newSelectedValues.has(value)) {
       newSelectedValues.delete(value);
@@ -72,8 +72,8 @@ export function FilterPopover<T>({
               <div key={index} className="flex items-center space-x-2 mb-2">
                 <Checkbox
                   id={`${String(columnId)}-${index}`}
-                  checked={selectedValues.has(value as keyof T)}
-                  onCheckedChange={() => handleCheckboxChange(value as keyof T)}
+                  checked={selectedValues.has(value)}
+                  onCheckedChange={() => handleCheckboxChange(value)}
                 />
                 <label htmlFor={`${String(columnId)}-${index}`} className="text-sm">
                   {String(value)}

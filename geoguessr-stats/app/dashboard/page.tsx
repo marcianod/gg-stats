@@ -24,7 +24,7 @@ const Map = dynamic<MapProps>(() => import('@/components/Map'), {
 // This should ideally be configurable by the user or from environment variables.
 const MY_PLAYER_ID = '608a7f9394d95300015224ac'
 
-function getGameMode(options?: { movementOptions?: { forbidMoving?: boolean; forbidZooming?: boolean; forbidPanning?: boolean; } }) {
+function getGameMode(options?: { map?: { name?: string; }; movementOptions?: { forbidMoving?: boolean; forbidZooming?: boolean; forbidPanning?: boolean; }; }) {
     if (!options?.movementOptions) return 'MOVE';
     if (options.movementOptions.forbidMoving && options.movementOptions.forbidZooming) return 'NMPZ';
     if (options.movementOptions.forbidMoving) return 'NM';
@@ -226,7 +226,7 @@ export default function DashboardPage() {
           myScore,
           opponentScore,
           outcome: outcome,
-          gameMode: getGameMode(duel.options as any),
+          gameMode: getGameMode(duel.options),
           mmr: ratingAfter,
           mmrChange: mmrChange,
           rounds: duel.rounds?.map((round) => {
@@ -260,9 +260,9 @@ export default function DashboardPage() {
               scoreDelta: scoreDelta,
               distDelta: distDelta,
               timeDelta: timeDelta,
-              multiplier: round.multiplier,
+              multiplier: round.multiplier as number | undefined,
               damage: (round.multiplier !== undefined && round.multiplier !== null) ? scoreDelta * (round.multiplier as number) : undefined,
-              gameMode: getGameMode(duel.options as any),
+              gameMode: getGameMode(duel.options),
             } as RoundData;
           }).filter((r): r is RoundData => r !== null),
         }

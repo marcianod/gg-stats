@@ -53,6 +53,11 @@ export interface Duel {
     map?: {
       name?: string;
     };
+    movementOptions?: {
+      forbidMoving?: boolean;
+      forbidZooming?: boolean;
+      forbidPanning?: boolean;
+    };
   };
   teams?: Team[];
   result?: {

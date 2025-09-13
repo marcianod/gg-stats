@@ -5,7 +5,6 @@ import dynamic from 'next/dynamic'
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
@@ -100,7 +99,7 @@ export default function StatsDashboard() {
           throw new Error(`HTTP error! status: ${geoJsonReponse.status} for countries.geojson`);
         }
 
-        const duelsData: Duel[][] = await duelsResponse.json(); // Changed from any
+        const duelsData: Duel[][] = await duelsResponse.json();
         const geoJson: GeoJson = await geoJsonReponse.json();
 
         setDuels(duelsData.flat(Infinity) as Duel[]); // Flatten the duels array and assert type

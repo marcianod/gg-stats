@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, BarChart3, Settings, Table } from 'lucide-react';
+import { LayoutDashboard, Settings, Table } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function DashboardLayout({

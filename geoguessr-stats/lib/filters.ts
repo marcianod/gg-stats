@@ -2,7 +2,7 @@ export type FilterType = 'include' | 'exclude';
 
 export interface Filter<T> {
   id: keyof T;
-  value: unknown[];
+  value: (string | number | boolean | Date | undefined)[];
   type: FilterType;
 }
 
@@ -13,7 +13,7 @@ export function applyFilters<T>(data: T[], filters: Filter<T>[]): T[] {
 
   return data.filter(item => {
     return filters.every(filter => {
-      const itemValue = item[filter.id];
+      const itemValue = item[filter.id] as string | number | boolean | Date | undefined;
       
       if (filter.type === 'include') {
         return filter.value.includes(itemValue);
