@@ -7,6 +7,7 @@ export interface Guess {
   time?: number;
   lat: number;
   lng: number;
+  created?: string;
   [key: string]: unknown;
 }
 
@@ -137,4 +138,29 @@ export interface CountryData {
     rounds: RoundData[];
     winRate: number;
     avgScoreDelta: number;
+}
+
+export interface AllRoundsData {
+  originalIndex: number;
+  gameId: string;
+  roundNumber: number;
+  mapName?: string;
+  date: Date;
+  countryCode: string;
+  myScore: number;
+  opponentScore: number;
+  scoreDelta: number;
+  myDistance: number;
+  opponentDistance: number;
+  distDelta: number;
+  myTime: number;
+  opponentTime: number;
+  timeDelta: number;
+  won: boolean;
+  mmr?: number;
+  mmrChange?: number;
+  opponentId?: string;
+  gameMode?: string;
+  multiplier?: number;
+  damage?: number;
 }

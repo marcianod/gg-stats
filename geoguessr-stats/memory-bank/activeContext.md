@@ -2,16 +2,17 @@
 
 ## Current Focus
 
-The current focus is on improving the user interface and experience. The main dashboard layout has been refactored to be more dynamic and user-friendly, with scrollable panels and sticky table headers. Recent work has focused on enhancing the data tables for better readability and usability.
+The application has been significantly restructured to improve navigation and usability. The "All Rounds" table has been moved to a dedicated "Data Explorer" page, accessible via a new sidebar, creating a clear distinction between the main dashboard and the detailed data analysis view.
 
 ## Immediate Goals
 
-*   The recent table enhancements are complete, including fixing alignment issues, displaying full country names, adding a rounds column, and optimizing column widths to prevent overflow.
-*   The next step is to gather feedback on these changes and identify any further areas for UI improvement.
+*   The application has been refactored into a main dashboard and a separate data explorer.
+*   The "All Rounds" table has been enhanced with pagination, an index column, and improved column headers.
+*   The distance calculation has been corrected across the entire application.
 
 ## Next Steps
 
-*   **Gather Feedback:** Collect user feedback on the new layout and UI.
+*   **Gather Feedback:** Collect user feedback on the new structure and the "Data Explorer" page.
 *   **UI Enhancements:** Based on feedback, implement further UI enhancements, such as improved data visualizations or more intuitive controls.
 *   **New Features:** Consider adding new features, such as more detailed statistical analysis or user-configurable settings.
 

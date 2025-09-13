@@ -1,27 +1,29 @@
-import { type ProcessedDuel } from '@/lib/types';
+export type FilterType = 'include' | 'exclude';
 
-export interface Filter {
-  id: number;
-  field: string;
-  condition: string;
-  value: string;
+export interface Filter<T> {
+  id: keyof T;
+  value: unknown[];
+  type: FilterType;
 }
 
-export function applyFilters(data: ProcessedDuel[], filters: Filter[]): ProcessedDuel[] {
+export function applyFilters<T>(data: T[], filters: Filter<T>[]): T[] {
   if (filters.length === 0) {
     return data;
   }
 
-  return data.filter((duel) => {
-    return filters.every((filter) => {
-      switch (filter.field) {
-        case 'Map':
-          return duel.options?.map?.name === filter.value;
-        case 'Outcome':
-          return duel.outcome === filter.value;
-        default:
-          return true;
+  return data.filter(item => {
+    return filters.every(filter => {
+      const itemValue = item[filter.id];
+      
+      if (filter.type === 'include') {
+        return filter.value.includes(itemValue);
       }
+      
+      if (filter.type === 'exclude') {
+        return !filter.value.includes(itemValue);
+      }
+
+      return true; // Should not happen
     });
   });
 }

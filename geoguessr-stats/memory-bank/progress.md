@@ -59,3 +59,20 @@
 *   [x] Updated `CountryStatsTable` to display full country names instead of country codes.
 *   [x] Added a "Rounds" column to `CountryStatsTable` to show the number of rounds played per country.
 *   [x] Abbreviated headers, adjusted column widths, and reduced cell padding to ensure `CountryStatsTable` fits within its container.
+
+### All Rounds Table Enhancements
+
+*   [x] Fixed column alignment issues caused by virtualization.
+*   [x] Replaced virtualization with a more reliable pagination system.
+*   [x] Increased the page limit to 200 and made pagination controls conditional.
+*   [x] Implemented a page reset on data filtering.
+*   [x] Added an index column to show the original data order.
+*   [x] Cleaned up and standardized column names.
+*   [x] Corrected the distance calculation to be 10x smaller.
+
+### Application Restructuring
+
+*   [x] Integrated the "All Rounds" table into a dedicated "Data Explorer" page.
+*   [x] Created a new dashboard layout with a persistent sidebar for navigation.
+*   [x] Restructured the application routes to have a main dashboard and a data explorer.
+*   [x] Updated the root page to redirect to the new dashboard.
