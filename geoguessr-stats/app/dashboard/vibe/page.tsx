@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Duel, GeoJson, CountryData } from '@/lib/types';
 import dynamic from 'next/dynamic';
 import { Rnd } from 'react-rnd';
@@ -8,18 +8,45 @@ import { Lock, Unlock } from 'lucide-react';
 
 const Map = dynamic(() => import('@/components/Map'), { ssr: false });
 
+interface PinnedLocation {
+  lat: number;
+  lng: number;
+  heading?: number;
+  pitch?: number;
+  zoom?: number;
+  size: { width: number; height: number };
+  position: { x: number; y: number };
+  isLocked: boolean;
+  zIndex: number;
+}
+
+interface HistoryState {
+  pinnedLocations: PinnedLocation[];
+  activeLocation: { lat: number; lng: number; heading?: number; pitch?: number; zoom?: number } | null;
+}
+
 export default function VibePage() {
   const [duels, setDuels] = useState<Duel[]>([]);
   const [geoJson, setGeoJson] = useState<GeoJson | null>(null);
-  const [activeLocation, setActiveLocation] = useState<{ lat: number; lng: number; heading?: number; pitch?: number; zoom?: number } | null>(null);
+  const [activeLocation, setActiveLocation] = useState<HistoryState['activeLocation']>(null);
   const [cachedLocations, setCachedLocations] = useState<{ lat: number; lng: number; heading?: number; pitch?: number; zoom?: number }[]>([]);
+  const [pinnedLocations, setPinnedLocations] = useState<PinnedLocation[]>([]);
+  const [history, setHistory] = useState<HistoryState[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [topZIndex, setTopZIndex] = useState(1001);
+  const [activeWindowZIndex, setActiveWindowZIndex] = useState(1000);
   const [windowSize, setWindowSize] = useState({ width: 640, height: 480 });
   const [windowPosition, setWindowPosition] = useState({ x: 50, y: 50 });
   const [isLocked, setIsLocked] = useState(false);
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const CACHE_LIMIT = 10;
+  const PIN_LIMIT = 5;
 
   useEffect(() => {
+    const savedPinnedLocations = localStorage.getItem('vibe-pinned-locations');
+    if (savedPinnedLocations) {
+      setPinnedLocations(JSON.parse(savedPinnedLocations));
+    }
     const savedSize = localStorage.getItem('vibe-window-size');
     if (savedSize) {
       setWindowSize(JSON.parse(savedSize));
@@ -41,6 +68,16 @@ export default function VibePage() {
       .then((data) => setGeoJson(data))
       .catch(error => console.error('Error fetching geojson:', error));
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem('vibe-pinned-locations', JSON.stringify(pinnedLocations));
+  }, [pinnedLocations]);
+
+  const recordHistory = useCallback(() => {
+    const newHistory = history.slice(0, historyIndex + 1);
+    setHistory([...newHistory, { pinnedLocations, activeLocation }]);
+    setHistoryIndex(newHistory.length);
+  }, [history, historyIndex, pinnedLocations, activeLocation]);
 
   const countryStats = useMemo(() => {
     const stats: { [key: string]: CountryData } = {};
@@ -95,6 +132,10 @@ export default function VibePage() {
   };
 
   const handleLocationClick = (location: { lat: number; lng: number; heading?: number; pitch?: number; zoom?: number }) => {
+    recordHistory();
+    const newZIndex = topZIndex + 1;
+    setTopZIndex(newZIndex);
+    setActiveWindowZIndex(newZIndex);
     setActiveLocation(location);
     if (!cachedLocations.find(l => l.lat === location.lat && l.lng === location.lng)) {
       setCachedLocations(prev => {
@@ -107,6 +148,90 @@ export default function VibePage() {
     }
   };
 
+  const handleLocationPin = (location: { lat: number; lng: number; heading?: number; pitch?: number; zoom?: number }) => {
+    recordHistory();
+    setPinnedLocations(prev => {
+      const isPinned = prev.some(p => p.lat === location.lat && p.lng === location.lng);
+      if (isPinned) {
+        return prev.filter(p => p.lat !== location.lat || p.lng !== location.lng);
+      }
+      if (prev.length < PIN_LIMIT) {
+        const newZIndex = topZIndex + 1;
+        setTopZIndex(newZIndex);
+        return [...prev, {
+          ...location,
+          size: { width: 400, height: 300 },
+          position: { x: 50 + prev.length * 20, y: 50 + prev.length * 20 },
+          isLocked: false,
+          zIndex: newZIndex,
+        }];
+      }
+      return prev;
+    });
+  };
+
+  const updatePinnedLocation = (index: number, updates: Partial<PinnedLocation>) => {
+    setPinnedLocations(prev =>
+      prev.map((loc, i) => (i === index ? { ...loc, ...updates } : loc))
+    );
+  };
+
+  const bringToFront = (index: number) => {
+    const newZIndex = topZIndex + 1;
+    setTopZIndex(newZIndex);
+    setPinnedLocations(prev =>
+      prev.map((loc, i) =>
+        i === index ? { ...loc, zIndex: newZIndex } : loc
+      )
+    );
+  };
+
+  const bringActiveToFront = () => {
+    const newZIndex = topZIndex + 1;
+    setTopZIndex(newZIndex);
+    setActiveWindowZIndex(newZIndex);
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isCtrl = e.ctrlKey || e.metaKey;
+      const isShift = e.shiftKey;
+
+      if (isShift && e.key.toLowerCase() === 'c') {
+        recordHistory();
+        setPinnedLocations([]);
+        setActiveLocation(null);
+      }
+
+      if (isCtrl && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (historyIndex > 0) {
+          const newIndex = historyIndex - 1;
+          const prevState = history[newIndex];
+          setPinnedLocations(prevState.pinnedLocations);
+          setActiveLocation(prevState.activeLocation);
+          setHistoryIndex(newIndex);
+        }
+      }
+
+      if (isCtrl && (e.key.toLowerCase() === 'y' || (isShift && e.key.toLowerCase() === 'z'))) {
+        e.preventDefault();
+        if (historyIndex < history.length - 1) {
+          const newIndex = historyIndex + 1;
+          const nextState = history[newIndex];
+          setPinnedLocations(nextState.pinnedLocations);
+          setActiveLocation(nextState.activeLocation);
+          setHistoryIndex(newIndex);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [history, historyIndex, recordHistory]);
+
   return (
     <div className="h-full w-full relative p-4">
       {geoJson && (
@@ -116,14 +241,16 @@ export default function VibePage() {
           locations={allLocations}
           countryStats={countryStats}
           onLocationClick={handleLocationClick}
+          onLocationPin={handleLocationPin}
           cachedLocations={cachedLocations}
           activeLocation={activeLocation}
+          pinnedLocations={pinnedLocations}
         />
       )}
-      {cachedLocations.length > 0 && (
+      {activeLocation && (
         <Rnd
-          style={{ display: activeLocation ? 'block' : 'none' }}
-          className="z-[1000]"
+          style={{ zIndex: activeWindowZIndex }}
+          onMouseDown={bringActiveToFront}
           size={windowSize}
           position={windowPosition}
           onDragStop={(e, d) => {
@@ -175,6 +302,47 @@ export default function VibePage() {
           </div>
         </Rnd>
       )}
+      {pinnedLocations.map((location, index) => (
+        <Rnd
+          key={`${location.lat}-${location.lng}`}
+          style={{ zIndex: location.zIndex }}
+          className="border"
+          onMouseDown={() => bringToFront(index)}
+          size={location.size}
+          position={location.position}
+          onDragStop={(e, d) => updatePinnedLocation(index, { position: { x: d.x, y: d.y } })}
+          onResizeStop={(e, direction, ref) =>
+            updatePinnedLocation(index, {
+              size: {
+                width: parseInt(ref.style.width, 10),
+                height: parseInt(ref.style.height, 10),
+              },
+            })
+          }
+          disableDragging={location.isLocked}
+          enableResizing={!location.isLocked}
+        >
+          <div className="h-full w-full bg-gray-50 p-4 rounded shadow-lg relative">
+            <iframe
+              className="w-full h-full rounded"
+              src={`https://www.google.com/maps/embed/v1/streetview?key=${apiKey}&location=${location.lat},${location.lng}&heading=${location.heading || 0}&pitch=${location.pitch || 0}&fov=90`}
+              allowFullScreen
+            ></iframe>
+            <button
+              onClick={() => updatePinnedLocation(index, { isLocked: !location.isLocked })}
+              className="absolute top-2 left-2 z-10 bg-white rounded-full p-1 text-gray-500 hover:text-gray-800"
+            >
+              {location.isLocked ? <Lock size={18} /> : <Unlock size={18} />}
+            </button>
+            <button
+              onClick={() => handleLocationPin(location)}
+              className="absolute top-2 right-2 z-10 bg-white rounded-full p-1 text-gray-500 hover:text-gray-800"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+          </div>
+        </Rnd>
+      ))}
     </div>
   );
 }

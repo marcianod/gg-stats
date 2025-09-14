@@ -39,8 +39,10 @@ export interface MapProps {
   onCountryClick?: (countryCode: string) => void;
   locations?: { lat: number; lng: number; heading?: number; pitch?: number; zoom?: number }[];
   onLocationClick?: (location: { lat: number; lng: number; heading?: number; pitch?: number; zoom?: number }) => void;
+  onLocationPin?: (location: { lat: number; lng: number; heading?: number; pitch?: number; zoom?: number }) => void;
   cachedLocations?: { lat: number; lng: number }[];
   activeLocation?: { lat: number; lng: number } | null;
+  pinnedLocations?: { lat: number; lng: number }[];
 }
 
 function getColorForWinRate(winRate: number | undefined): string {
@@ -105,24 +107,34 @@ function ChoroplethLayer({ geoJson, countryStats, onCountrySelect, selectedCount
     return <GeoJSON ref={geoJsonLayer} data={geoJson as FeatureCollection<Geometry, CountryProperties>} style={style} onEachFeature={onEachFeature} />;
 }
 
-function HeatmapMarkers({ locations, onLocationClick, cachedLocations, activeLocation }: MapProps) {
+function HeatmapMarkers({ locations, onLocationClick, onLocationPin, cachedLocations, activeLocation, pinnedLocations }: MapProps) {
   const map = useMap();
   const [zoomLevel, setZoomLevel] = useState(map.getZoom());
+  const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
-    const handleZoom = () => {
-      setZoomLevel(map.getZoom());
-    };
+    const handleZoom = () => setZoomLevel(map.getZoom());
+    const handleDragStart = () => setIsDragging(true);
+    const handleDragEnd = () => setIsDragging(false);
+
     map.on('zoomend', handleZoom);
+    map.on('dragstart', handleDragStart);
+    map.on('dragend', handleDragEnd);
+
     return () => {
       map.off('zoomend', handleZoom);
+      map.off('dragstart', handleDragStart);
+      map.off('dragend', handleDragEnd);
     };
   }, [map]);
 
-  const getPathOptions = (loc: { lat: number; lng: number; }, cacheIndex: number, isActive: boolean) => {
+  const getPathOptions = (loc: { lat: number; lng: number; }, cacheIndex: number, isActive: boolean, isPinned: boolean) => {
     const baseRadius = 0.5 + (zoomLevel / 18) * 15;
     const baseOpacity = 0.1 + (zoomLevel / 18) * 0.8;
 
+    if (isPinned) {
+      return { radius: baseRadius + 2, color: '#800080', fillColor: '#800080', fillOpacity: 1.0, weight: 2, dashArray: '5, 5' };
+    }
     if (isActive) {
       return { radius: baseRadius + 2, color: '#ff0000', fillColor: '#ff0000', fillOpacity: 1.0 };
     }
@@ -139,7 +151,8 @@ function HeatmapMarkers({ locations, onLocationClick, cachedLocations, activeLoc
       {locations?.map((loc, index) => {
         const cacheIndex = cachedLocations?.findIndex(l => l.lat === loc.lat && l.lng === loc.lng) ?? -1;
         const isActive = activeLocation?.lat === loc.lat && activeLocation?.lng === loc.lng;
-        const pathOptions = getPathOptions(loc, cacheIndex, isActive);
+        const isPinned = pinnedLocations?.some(p => p.lat === loc.lat && p.lng === loc.lng) ?? false;
+        const pathOptions = getPathOptions(loc, cacheIndex, isActive, isPinned);
 
         return (
           <CircleMarker
@@ -148,11 +161,23 @@ function HeatmapMarkers({ locations, onLocationClick, cachedLocations, activeLoc
             radius={pathOptions.radius}
             pathOptions={pathOptions}
             eventHandlers={{
-              click: () => {
-                if (onLocationClick) {
+              click: (e) => {
+                if (!isDragging && onLocationClick) {
                   onLocationClick(loc);
                 }
               },
+              contextmenu: (e) => { // Using contextmenu for right-click
+                if (!isDragging && onLocationPin) {
+                  onLocationPin(loc);
+                }
+                L.DomEvent.stopPropagation(e.originalEvent);
+                L.DomEvent.preventDefault(e.originalEvent);
+              },
+              mouseup: (e) => { // Using mouseup for middle-click
+                if (!isDragging && e.originalEvent.button === 1 && onLocationPin) {
+                  onLocationPin(loc);
+                }
+              }
             }}
           />
         );
