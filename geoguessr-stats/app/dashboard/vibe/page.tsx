@@ -59,7 +59,7 @@ export default function VibePage() {
     if (savedLockState) {
       setIsLocked(JSON.parse(savedLockState));
     }
-    fetch('/data/geoguessr_stats.json')
+    fetch('/api/duels')
       .then((res) => res.json())
       .then((data) => setDuels(data))
       .catch(error => console.error('Error fetching duels:', error));
@@ -127,7 +127,7 @@ export default function VibePage() {
     return locations;
   }, [duels]);
 
-  const handleCountryClick = (countryCode: string) => {
+  const handleCountryClick = () => {
     setActiveLocation(null);
   };
 

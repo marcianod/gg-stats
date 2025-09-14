@@ -161,7 +161,7 @@ function HeatmapMarkers({ locations, onLocationClick, onLocationPin, cachedLocat
             radius={pathOptions.radius}
             pathOptions={pathOptions}
             eventHandlers={{
-              click: (e) => {
+              click: () => {
                 if (!isDragging && onLocationClick) {
                   onLocationClick(loc);
                 }

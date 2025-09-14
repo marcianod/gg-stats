@@ -1,5 +1,6 @@
 import { kv } from '@vercel/kv';
 import { NextResponse } from 'next/server';
+import { type Duel } from '@/lib/types';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': 'https://www.geoguessr.com',
@@ -20,10 +21,10 @@ export async function POST(request: Request) {
     }
 
     const pipeline = kv.pipeline();
-    duels.forEach((duel: any) => {
-      // Assuming each duel has a unique 'id' property
-      if (duel.id) {
-        pipeline.set(duel.id, duel);
+    duels.forEach((duel: Duel) => {
+      // Assuming each duel has a unique 'gameId' property which is true
+      if (duel.gameId) {
+        pipeline.set(duel.gameId, duel);
       }
     });
 
@@ -38,7 +39,7 @@ export async function POST(request: Request) {
   }
 }
 
-export async function OPTIONS(request: Request) {
+export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
     headers: CORS_HEADERS,
