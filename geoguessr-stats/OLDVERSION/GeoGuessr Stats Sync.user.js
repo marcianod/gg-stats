@@ -1,16 +1,13 @@
 // ==UserScript==
 // @name         GeoGuessr Stats Sync
 // @namespace    http://tampermonkey.net/
-// @version      2025.08.18.UI-Feedback-Fix
+// @version      2025.09.14.cloud-sync
 // @description  Adds a button to your GeoGuessr profile to sync duel stats to your web app.
 // @author       You
 // @match        https://www.geoguessr.com/user/*
 // @match        https://www.geoguessr.com/me/profile
-// @connect      localhost
+// @connect      gg-stats.vercel.app
 // @grant        GM_xmlhttpRequest
-// @grant        GM_setValue
-// @grant        GM_getValue
-// @grant        GM_registerMenuCommand
 // @require      https://cdn.jsdelivr.net/npm/sweetalert2@11
 // ==/UserScript==
 
@@ -18,23 +15,9 @@
     'use strict';
 
     // --- Configuration ---
-    function getWebAppUrl() {
-        const port = GM_getValue('syncPort', '3000'); // Default to 3000 if not set
-        return `http://localhost:${port}/api/sync`;
-    }
-
-    GM_registerMenuCommand('Set Sync Port', () => {
-        const currentPort = GM_getValue('syncPort', '3000');
-        const newPort = prompt('Enter the port your local dev server is running on:', currentPort);
-        if (newPort && /^\d+$/.test(newPort)) {
-            GM_setValue('syncPort', newPort);
-            alert(`Sync port updated to ${newPort}.`);
-        } else if (newPort) {
-            alert('Invalid port. Please enter numbers only.');
-        }
-    });
-
-    const webAppUrl = getWebAppUrl(); // This will be called once on script load
+    const baseUrl = 'https://gg-stats.vercel.app';
+    const syncApiUrl = `${baseUrl}/api/sync`;
+    const lastSyncApiUrl = `${baseUrl}/api/last-sync`;
     const MAX_PAGES_TO_FETCH = 200; // Stops a full resync after this many pages
 
     function addSyncButton() {
@@ -84,21 +67,21 @@
 
     const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-    function getSyncInfoFromServer() {
+    function getLastSyncTimestampFromServer() {
         return new Promise((resolve, reject) => {
             GM_xmlhttpRequest({
                 method: 'GET',
-                url: getWebAppUrl(), // Use function to get latest URL
+                url: lastSyncApiUrl,
                 headers: { "Accept": "application/json" },
                 onload: (response) => {
                     try {
                         const data = JSON.parse(response.responseText);
-                        resolve(data);
+                        resolve(data.lastSync || 0);
                     } catch (e) {
                         reject(new Error('Failed to parse sync info from server.'));
                     }
                 },
-                onerror: (error) => reject(new Error('Network error fetching sync info. Is your local server running?'))
+                onerror: (error) => reject(new Error('Network error fetching sync info. Is the server running?'))
             });
         });
     }
@@ -109,12 +92,13 @@
         try {
             let lastSyncTimestamp = 0;
             if (!forceResync) {
-                const syncInfo = await getSyncInfoFromServer();
-                lastSyncTimestamp = syncInfo.lastSyncTimestamp || 0;
+                lastSyncTimestamp = await getLastSyncTimestampFromServer();
                 const lastSyncDate = new Date(lastSyncTimestamp);
                 console.log(`Server's last sync date is ${lastSyncDate.toLocaleString()}. Fetching duels newer than this.`);
+                Swal.update({ text: `Last sync: ${lastSyncDate.toLocaleString()}. Looking for newer games...` });
             } else {
                 console.log('Force Full Resync initiated. Fetching all available history.');
+                Swal.update({ text: 'Force Full Resync initiated. Fetching all available history.' });
             }
 
             let page = 0;
@@ -144,12 +128,11 @@
                         break;
                     }
 
-                    // FIXED: More robustly handle cases where the 'created' date might be invalid.
                     const firstEntry = feed.entries[0];
                     let dateString = 'an older date';
                     if (firstEntry && firstEntry.created) {
                         const d = new Date(firstEntry.created);
-                        if (!isNaN(d)) { // Check if the date is valid before trying to format it
+                        if (!isNaN(d)) {
                             dateString = d.toLocaleDateString();
                         }
                     }
@@ -174,7 +157,7 @@
 
                 if (batchDuelIds.size > 0) {
                     const uniqueIds = [...batchDuelIds];
-                    Swal.update({ text: `Found ${uniqueIds.length} duel(s). Fetching details...` });
+                    Swal.update({ text: `Found ${uniqueIds.length} new duel(s). Fetching details...` });
 
                     const duelDataPromises = uniqueIds.map(id =>
                         fetch(`https://game-server.geoguessr.com/api/duels/${id}`, { credentials: 'include' })
@@ -183,7 +166,7 @@
                     const batchDuelData = (await Promise.all(duelDataPromises)).filter(Boolean);
 
                     if (batchDuelData.length > 0) {
-                        Swal.update({ text: `Sending batch of ${batchDuelData.length} duel(s)...` });
+                        Swal.update({ text: `Sending batch of ${batchDuelData.length} duel(s) to server...` });
                         const res = await sendBatchToServer(batchDuelData);
                         totalAdded += res.addedCount || 0;
                     }
@@ -199,7 +182,7 @@
         return new Promise((resolve, reject) => {
             GM_xmlhttpRequest({
                 method: 'POST',
-                url: getWebAppUrl(), // Use function to get latest URL
+                url: syncApiUrl,
                 data: JSON.stringify(data),
                 headers: { "Content-Type": "application/json" },
                 onload: (response) => {
@@ -211,7 +194,7 @@
                         reject(new Error('Received an invalid response from the server.'));
                     }
                 },
-                onerror: (error) => reject(new Error('Could not connect to the local sync server. Is it running?'))
+                onerror: (error) => reject(new Error('Could not connect to the sync server.'))
             });
         });
     }
