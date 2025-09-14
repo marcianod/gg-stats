@@ -183,7 +183,14 @@ export default function DashboardPage() {
   };
 
   const processedDuels = useMemo(() => {
-    return duels
+    const sortedDuels = [...duels].sort((a, b) => {
+        // Safely access the timestamp of the first guess for each duel
+        const timeA = new Date(a.rounds?.[0]?.startTime || 0).getTime();
+        const timeB = new Date(b.rounds?.[0]?.startTime || 0).getTime();
+        return timeB - timeA; // Sorts in descending order (newest first)
+    });
+
+    return sortedDuels
       .map((duel) => {
         if (!duel.teams || duel.teams.length < 2 || !duel.rounds || duel.rounds.length === 0) {
           return null
