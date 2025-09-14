@@ -2,23 +2,17 @@
 
 ## Current Focus
 
-The "Vibe Check" page has been significantly enhanced to provide a more immersive and interactive experience. It now features a draggable and resizable window that displays an interactive Google Street View panorama for each location.
+The primary focus is on resolving a data sorting issue within the main dashboard. After migrating to a Vercel KV database, the duel data fetched from the `/api/duels` endpoint is in an arbitrary order. This causes the UI to display matches incorrectly, not chronologically as intended.
 
-## Implemented Features
+## Problem Details
 
-*   **Interactive Street View:** Replaced the static image popup with a fully interactive Google Street View panorama.
-*   **Draggable & Resizable Window:** The Street View is displayed in a window that can be freely moved and resized. Its position and dimensions are saved and restored between sessions.
-*   **Lockable Window:** The window's position and size can be locked to prevent accidental changes.
-*   **Advanced Caching:** The 10 most recently viewed locations are cached, allowing for instant switching between them.
-*   **Dynamic Marker Coloring:** The map markers are dynamically colored to visualize their status:
-    *   **Active:** Bright red
-    *   **Cached:** Fades from red to yellow
-    *   **Default:** Blue
-*   **Corrected Panorama Orientation:** The Street View panoramas now use the heading and pitch data from the user's duels for a more authentic viewing experience.
-*   **Clean Map Interface:** The choropleth overlays have been adjusted to be transparent for countries with no data, providing a cleaner map while retaining functionality.
+- **Issue:** The "Recent Matches" table does not show the newest games first.
+- **Root Cause:** The Upstash database (Vercel KV) does not guarantee the order of items returned from `keys()` and `mget()`.
+- **Attempted Fixes:**
+    1.  An initial client-side sort was added, but it was being overridden by another sort operation.
+    2.  A second attempt was made to correct the sorting logic using a more reliable timestamp (`guesses[0].created`), but this also failed to produce the correct order.
 
 ## Next Steps
 
-*   **Gather Feedback:** Collect user feedback on the new "Vibe Check" page.
-*   **UI Enhancements:** Based on feedback, implement further UI enhancements.
-*   **New Features:** Consider adding new features, such as more detailed statistical analysis or user-configurable settings.
+- **Diagnose:** Investigate why the latest sorting logic is not working as expected. This may involve logging the data at various stages of the processing pipeline to see how it's being transformed.
+- **Implement a Robust Solution:** Develop a reliable client-side sorting mechanism that correctly orders the duels from newest to oldest before they are rendered.

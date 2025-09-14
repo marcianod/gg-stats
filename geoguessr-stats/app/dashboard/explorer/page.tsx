@@ -95,6 +95,23 @@ export default function DataExplorerPage() {
         }
         const data: Duel[] = await response.json();
         
+        // Sort duels by the creation time of the first guess of the first round
+        data.sort((a, b) => {
+          const getTimestamp = (duel: Duel): number => {
+            const guess = duel.teams?.[0]?.players?.[0]?.guesses.find(g => g.roundNumber === 1);
+            if (guess?.created) {
+              return new Date(guess.created).getTime();
+            }
+            const roundStartTime = duel.rounds?.[0]?.startTime;
+            if (roundStartTime) {
+              return new Date(roundStartTime).getTime();
+            }
+            return 0;
+          };
+          
+          return getTimestamp(b) - getTimestamp(a);
+        });
+
         const processedData = processAllRoundsData(data, MY_PLAYER_ID);
         setAllRounds(processedData);
 
@@ -248,8 +265,8 @@ export default function DataExplorerPage() {
         <SortableTable
           columns={columns}
           data={filteredData}
-          initialSortKey="date"
-          initialSortDirection="descending"
+          initialSortKey="originalIndex"
+          initialSortDirection="ascending"
           onCellContextMenu={handleCellContextMenu}
         />
       </div>

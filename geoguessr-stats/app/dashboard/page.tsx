@@ -183,14 +183,7 @@ export default function DashboardPage() {
   };
 
   const processedDuels = useMemo(() => {
-    const sortedDuels = [...duels].sort((a, b) => {
-        // Safely access the timestamp of the first guess for each duel
-        const timeA = new Date(a.rounds?.[0]?.startTime || 0).getTime();
-        const timeB = new Date(b.rounds?.[0]?.startTime || 0).getTime();
-        return timeB - timeA; // Sorts in descending order (newest first)
-    });
-
-    return sortedDuels
+    const mappedDuels = duels
       .map((duel) => {
         if (!duel.teams || duel.teams.length < 2 || !duel.rounds || duel.rounds.length === 0) {
           return null
@@ -280,8 +273,18 @@ export default function DashboardPage() {
         }
         return processedDuel;
       })
-      .filter((d): d is ProcessedDuel => d !== null)
-      .sort((a, b) => b.date.getTime() - a.date.getTime());
+      .filter((d): d is ProcessedDuel => d !== null);
+
+    const sortedDuels = mappedDuels.sort((a, b) => {
+        const timeA = new Date(a.teams?.[0]?.players?.[0]?.guesses?.[0]?.created || 0).getTime();
+        const timeB = new Date(b.teams?.[0]?.players?.[0]?.guesses?.[0]?.created || 0).getTime();
+        if(isNaN(timeA) || isNaN(timeB)) {
+            return 0;
+        }
+        return timeB - timeA;
+      });
+    
+    return sortedDuels;
   }, [duels]);
 
   const filteredDuels = useMemo(() => {
