@@ -89,9 +89,9 @@ export default function DataExplorerPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch('/data/geoguessr_stats.json');
+        const response = await fetch('/api/duels');
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status} for geoguessr_stats.json`);
+          throw new Error(`HTTP error! status: ${response.status} for /api/duels`);
         }
         const data: Duel[] = await response.json();
         

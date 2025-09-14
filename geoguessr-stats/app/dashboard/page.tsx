@@ -127,21 +127,21 @@ export default function DashboardPage() {
     const fetchData = async () => {
       try {
         const [duelsResponse, geoJsonReponse] = await Promise.all([
-          fetch('/data/geoguessr_stats.json'),
+          fetch('/api/duels'),
           fetch('/data/countries.geojson'),
         ]);
 
         if (!duelsResponse.ok) {
-          throw new Error(`HTTP error! status: ${duelsResponse.status} for geoguessr_stats.json`);
+          throw new Error(`HTTP error! status: ${duelsResponse.status} for /api/duels`);
         }
         if (!geoJsonReponse.ok) {
           throw new Error(`HTTP error! status: ${geoJsonReponse.status} for countries.geojson`);
         }
 
-        const duelsData: Duel[][] = await duelsResponse.json();
+        const duelsData: Duel[] = await duelsResponse.json();
         const geoJson: GeoJson = await geoJsonReponse.json();
 
-        setDuels(duelsData.flat(Infinity) as Duel[]);
+        setDuels(duelsData);
         setGeoJsonData(geoJson);
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : "An unknown error occurred");

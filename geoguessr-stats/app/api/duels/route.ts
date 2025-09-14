@@ -10,7 +10,7 @@ export async function GET() {
       return NextResponse.json([]);
     }
 
-    const duels = await kv.mget(...duelKeys);
+    const duels = await kv.mget(duelKeys);
     return NextResponse.json(duels);
   } catch (error) {
     console.error('Error fetching duels:', error);

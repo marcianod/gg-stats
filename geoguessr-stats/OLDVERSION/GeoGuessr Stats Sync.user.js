@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GeoGuessr Stats Sync
 // @namespace    http://tampermonkey.net/
-// @version      2025.09.14.cloud-sync
+// @version      2025.09.14.rate-limit-fix
 // @description  Adds a button to your GeoGuessr profile to sync duel stats to your web app.
 // @author       You
 // @match        https://www.geoguessr.com/user/*
@@ -19,6 +19,8 @@
     const syncApiUrl = `${baseUrl}/api/sync`;
     const lastSyncApiUrl = `${baseUrl}/api/last-sync`;
     const MAX_PAGES_TO_FETCH = 200; // Stops a full resync after this many pages
+    const DUEL_FETCH_BATCH_SIZE = 10;
+    const DUEL_FETCH_DELAY_MS = 1000;
 
     function addSyncButton() {
         const actionsContainer = document.querySelector('[class^="profile-header_actions__"]');
@@ -105,6 +107,7 @@
             let keepFetching = true;
             let totalAdded = 0;
             const BATCH_SIZE_PAGES = 40;
+            const allNewDuelIds = new Set();
 
             while (keepFetching) {
                 const batchDuelIds = new Set();
@@ -147,31 +150,43 @@
                         try {
                             const payloadData = JSON.parse(entry.payload);
                             if (Array.isArray(payloadData)) {
-                                for (const sub of payloadData) if (sub.payload?.gameMode === "Duels") batchDuelIds.add(sub.payload.gameId);
-                            } else if (payloadData?.gameMode === "Duels") batchDuelIds.add(payloadData.gameId);
+                                for (const sub of payloadData) if (sub.payload?.gameMode === "Duels") allNewDuelIds.add(sub.payload.gameId);
+                            } else if (payloadData?.gameMode === "Duels") allNewDuelIds.add(payloadData.gameId);
                         } catch (e) { /* Ignore */ }
                     }
                     page++;
                     await sleep(100);
                 }
+            }
 
-                if (batchDuelIds.size > 0) {
-                    const uniqueIds = [...batchDuelIds];
-                    Swal.update({ text: `Found ${uniqueIds.length} new duel(s). Fetching details...` });
+            if (allNewDuelIds.size > 0) {
+                const uniqueIds = [...allNewDuelIds];
+                Swal.update({ text: `Found ${uniqueIds.length} new duel(s). Fetching details...` });
 
-                    const duelDataPromises = uniqueIds.map(id =>
+                const allDuelData = [];
+                for (let i = 0; i < uniqueIds.length; i += DUEL_FETCH_BATCH_SIZE) {
+                    const batchIds = uniqueIds.slice(i, i + DUEL_FETCH_BATCH_SIZE);
+                    Swal.update({ text: `Fetching duel details ${i + 1}-${Math.min(i + DUEL_FETCH_BATCH_SIZE, uniqueIds.length)} of ${uniqueIds.length}...` });
+
+                    const duelDataPromises = batchIds.map(id =>
                         fetch(`https://game-server.geoguessr.com/api/duels/${id}`, { credentials: 'include' })
                         .then(res => res.ok ? res.json() : null)
                     );
                     const batchDuelData = (await Promise.all(duelDataPromises)).filter(Boolean);
+                    allDuelData.push(...batchDuelData);
 
-                    if (batchDuelData.length > 0) {
-                        Swal.update({ text: `Sending batch of ${batchDuelData.length} duel(s) to server...` });
-                        const res = await sendBatchToServer(batchDuelData);
-                        totalAdded += res.addedCount || 0;
+                    if (i + DUEL_FETCH_BATCH_SIZE < uniqueIds.length) {
+                        await sleep(DUEL_FETCH_DELAY_MS);
                     }
                 }
+
+                if (allDuelData.length > 0) {
+                    Swal.update({ text: `Sending batch of ${allDuelData.length} duel(s) to server...` });
+                    const res = await sendBatchToServer(allDuelData);
+                    totalAdded += res.addedCount || 0;
+                }
             }
+
             Swal.fire('Sync Complete!', `Finished syncing. Added ${totalAdded} new duel(s).`, 'success');
         } catch (error) {
             Swal.fire('An Error Occurred', error.message, 'error');
