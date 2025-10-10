@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Duel, GeoJson, CountryData, VibeLocation, RoundData, ProcessedDuel } from '@/lib/types';
+import { GeoJson, CountryData, VibeLocation, ProcessedDuel } from '@/lib/types';
 import dynamic from 'next/dynamic';
 import { Rnd } from 'react-rnd';
 import { processDuels } from '@/lib/utils';
@@ -11,11 +11,6 @@ import { DateRange } from 'react-day-picker';
 import { Button } from '@/components/ui/button';
 
 const Map = dynamic(() => import('@/components/Map'), { ssr: false });
-
-interface PerformanceRange {
-  min: number;
-  max: number;
-}
 
 interface PinnedLocation {
   lat: number;

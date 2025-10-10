@@ -116,7 +116,7 @@ export default function DashboardPage() {
   const [selectedCountry, setSelectedCountry] = useState<CountryData | null>(null);
   const [selectedRoundData, setSelectedRoundData] = useState<RoundData | null>(null);
   const [selectedCountryRounds, setSelectedCountryRounds] = useState<RoundData[] | null>(null);
-  const [filters, setFilters] = useState<Filter<ProcessedDuel>[]>([]);
+  const [filters] = useState<Filter<ProcessedDuel>[]>([]);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
   const minDate = useMemo(() => {

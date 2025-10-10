@@ -108,7 +108,7 @@ function ChoroplethLayer({ geoJson, countryStats, onCountrySelect, selectedCount
     return <GeoJSON ref={geoJsonLayer} data={geoJson as FeatureCollection<Geometry, CountryProperties>} style={style} onEachFeature={onEachFeature} />;
 }
 
-function HeatmapMarkers({ locations, onLocationClick, onLocationPin, cachedLocations, activeLocation, pinnedLocations, performanceRange }: MapProps) {
+function HeatmapMarkers({ locations, onLocationClick, onLocationPin, activeLocation, pinnedLocations, performanceRange }: MapProps) {
   const map = useMap();
   const [zoomLevel, setZoomLevel] = useState(map.getZoom());
   const [bounds, setBounds] = useState(map.getBounds());
