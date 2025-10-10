@@ -41,7 +41,7 @@ export interface MapProps {
   onLocationClick?: (location: VibeLocation) => void;
   onLocationPin?: (location: VibeLocation) => void;
   cachedLocations?: VibeLocation[];
-  activeLocation?: { lat: number; lng: number } | null;
+  activeLocation?: VibeLocation | null;
   pinnedLocations?: { lat: number; lng: number }[];
   performanceRange?: { min: number; max: number };
 }
@@ -110,9 +110,10 @@ function ChoroplethLayer({ geoJson, countryStats, onCountrySelect, selectedCount
 
 function HeatmapMarkers({ locations, onLocationClick, onLocationPin, activeLocation, pinnedLocations, performanceRange }: MapProps) {
   const map = useMap();
-  const [zoomLevel, setZoomLevel] = useState(map.getZoom());
   const [bounds, setBounds] = useState(map.getBounds());
-  const [isDragging, setIsDragging] = useState(false);
+  const isDragging = useRef(false);
+
+  const zoomLevel = map.getZoom();
 
   const getColorFromValue = (value: number, min: number, max: number) => {
     if (max === min) return 'rgb(255, 255, 0)';
@@ -123,21 +124,35 @@ function HeatmapMarkers({ locations, onLocationClick, onLocationPin, activeLocat
   };
 
   useEffect(() => {
-    const handleMove = () => {
-      setZoomLevel(map.getZoom());
+    let throttleTimeout: NodeJS.Timeout | null = null;
+
+    const onMove = () => {
+      if (throttleTimeout) return;
+
+      throttleTimeout = setTimeout(() => {
+        setBounds(map.getBounds());
+        throttleTimeout = null;
+      }, 50); // Throttle updates to every 50ms
+    };
+    
+    const handleDragStart = () => isDragging.current = true;
+    const handleDragEnd = () => {
+      isDragging.current = false;
+      // Final update to ensure the last position is rendered
       setBounds(map.getBounds());
     };
-    const handleDragStart = () => setIsDragging(true);
-    const handleDragEnd = () => setIsDragging(false);
 
-    map.on('moveend', handleMove);
+    map.on('move', onMove);
     map.on('dragstart', handleDragStart);
     map.on('dragend', handleDragEnd);
 
     return () => {
-      map.off('moveend', handleMove);
+      map.off('move', onMove);
       map.off('dragstart', handleDragStart);
       map.off('dragend', handleDragEnd);
+      if (throttleTimeout) {
+        clearTimeout(throttleTimeout);
+      }
     };
   }, [map]);
 
@@ -146,12 +161,11 @@ function HeatmapMarkers({ locations, onLocationClick, onLocationPin, activeLocat
   const getPathOptions = (loc: VibeLocation, isActive: boolean, isPinned: boolean) => {
     const { min, max } = performanceRange || { min: 0, max: 5000 };
     const color = getColorFromValue(loc.performanceValue, min, max);
-    const baseRadius = zoomLevel < 5 ? 1 + zoomLevel * 0.5 : 3 + (zoomLevel - 5) * 1.5;
-    const baseOpacity = zoomLevel < 5 ? 0.6 : 0.8;
+    const baseRadius = zoomLevel < 6 ? 2 + zoomLevel * 0.8 : 6 + (zoomLevel - 6) * 1.2;
 
     if (isPinned) return { radius: baseRadius + 2, color: '#800080', fillColor: '#800080', fillOpacity: 1.0, weight: 2, dashArray: '5, 5' };
-    if (isActive) return { radius: baseRadius + 2, color: '#ff0000', fillColor: '#ff0000', fillOpacity: 1.0 };
-    return { radius: baseRadius, color, fillColor: color, fillOpacity: baseOpacity, weight: 0 };
+    if (isActive) return { radius: baseRadius + 4, color: '#FFFFFF', weight: 2.5, fillColor: color, fillOpacity: 1.0 };
+    return { radius: baseRadius, color: '#000000', weight: 1.5, fillColor: color, fillOpacity: 1.0 };
   };
 
   return (
@@ -168,9 +182,9 @@ function HeatmapMarkers({ locations, onLocationClick, onLocationPin, activeLocat
             radius={pathOptions.radius}
             pathOptions={pathOptions}
             eventHandlers={{
-              click: () => !isDragging && onLocationClick?.(loc),
+              click: () => !isDragging.current && onLocationClick?.(loc),
               contextmenu: (e) => {
-                if (!isDragging && onLocationPin) {
+                if (!isDragging.current && onLocationPin) {
                   onLocationPin(loc);
                   L.DomEvent.stop(e.originalEvent);
                 }
@@ -198,16 +212,16 @@ function MapBounds({ roundData, selectedCountry, geoJson, locations }: { roundDa
   }, [map, roundData]);
 
   useEffect(() => {
-    if (selectedCountry && geoJson && !roundData && !locations) {
+    if (selectedCountry && geoJson && !roundData) {
         const countryFeature = geoJson.features.find((feature: Feature<Geometry, CountryProperties>) => (feature.properties['ISO3166-1-Alpha-2'] as string).toLowerCase() === selectedCountry.countryCode);
         if (countryFeature) {
             const bounds = L.geoJSON(countryFeature).getBounds();
             map.fitBounds(bounds);
         }
-    } else if (!roundData && !selectedCountry) {
+    } else if (!roundData && !selectedCountry && !locations?.length) {
         map.setView([20, 0], 2);
     }
-  }, [map, selectedCountry, geoJson, roundData, locations]);
+  }, [map, selectedCountry, geoJson, roundData]);
 
   return null;
 }
@@ -242,6 +256,20 @@ export default function Map(props: MapProps) {
         attribution='&copy; <a href="https://www.google.com/maps">Google Maps</a>'
         subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
       />
+      {props.activeLocation && (
+        <>
+          <Marker
+            position={props.activeLocation.round.myGuess}
+            icon={myIcon}
+          />
+          <Polyline positions={[props.activeLocation.round.myGuess, props.activeLocation.round.actual]} color="#0d6efd" dashArray="5, 5" />
+          <Marker
+            position={props.activeLocation.round.opponentGuess}
+            icon={oppIcon}
+          />
+          <Polyline positions={[props.activeLocation.round.opponentGuess, props.activeLocation.round.actual]} color="#dc3545" dashArray="5, 5" />
+        </>
+      )}
       {roundData && (
         <>
           {actualStreetViewUrl && (

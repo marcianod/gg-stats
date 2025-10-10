@@ -132,6 +132,7 @@ export interface VibeLocation {
   pitch?: number;
   zoom?: number;
   performanceValue: number;
+  round: RoundData;
 }
 
 export interface CountryProperties {

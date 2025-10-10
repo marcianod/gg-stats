@@ -12,12 +12,7 @@ import { Button } from '@/components/ui/button';
 
 const Map = dynamic(() => import('@/components/Map'), { ssr: false });
 
-interface PinnedLocation {
-  lat: number;
-  lng: number;
-  heading?: number;
-  pitch?: number;
-  zoom?: number;
+interface PinnedLocation extends VibeLocation {
   size: { width: number; height: number };
   position: { x: number; y: number };
   isLocked: boolean;
@@ -26,13 +21,13 @@ interface PinnedLocation {
 
 interface HistoryState {
   pinnedLocations: PinnedLocation[];
-  activeLocation: { lat: number; lng: number; heading?: number; pitch?: number; zoom?: number } | null;
+  activeLocation: VibeLocation | null;
 }
 
 export default function VibePage() {
   const [duels, setDuels] = useState<ProcessedDuel[]>([]);
   const [geoJson, setGeoJson] = useState<GeoJson | null>(null);
-  const [activeLocation, setActiveLocation] = useState<HistoryState['activeLocation']>(null);
+  const [activeLocation, setActiveLocation] = useState<VibeLocation | null>(null);
   const [cachedLocations, setCachedLocations] = useState<VibeLocation[]>([]);
   const [pinnedLocations, setPinnedLocations] = useState<PinnedLocation[]>([]);
   const [history, setHistory] = useState<HistoryState[]>([]);
@@ -147,6 +142,7 @@ export default function VibePage() {
               pitch: round.actual.pitch,
               zoom: round.actual.zoom,
               performanceValue,
+              round,
             });
           }
         });
@@ -369,6 +365,26 @@ export default function VibePage() {
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
             </button>
+            <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white p-2 text-sm flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <span>
+                  Score: {activeLocation.round.myGuess.score}
+                  <span className={activeLocation.round.scoreDelta >= 0 ? 'text-green-400' : 'text-red-400'}>
+                    {' '}({activeLocation.round.scoreDelta >= 0 ? '+' : ''}{activeLocation.round.scoreDelta.toFixed(0)})
+                  </span>
+                </span>
+                <span>
+                  Impact: {((activeLocation.round.scoreDelta ?? 0) * (1 - ((activeLocation.round.myGuess.score ?? 0) + (activeLocation.round.opponentGuess.score ?? 0)) / 10000)).toFixed(0)}
+                </span>
+              </div>
+              <a
+                href={`https://www.geoguessr.com/duels/${activeLocation.round.duelId}/replay?round=${activeLocation.round.roundNumber}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button variant="secondary" size="sm">View Replay</Button>
+              </a>
+            </div>
           </div>
         </Rnd>
       )}
@@ -405,7 +421,7 @@ export default function VibePage() {
               {location.isLocked ? <Lock size={18} /> : <Unlock size={18} />}
             </button>
             <button
-              onClick={() => handleLocationPin({ ...location, performanceValue: 0 })}
+              onClick={() => handleLocationPin(location)}
               className="absolute top-2 right-2 z-10 bg-white rounded-full p-1 text-gray-500 hover:text-gray-800"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
