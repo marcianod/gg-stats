@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
+import { DateRange } from 'react-day-picker'
 import {
   Card,
   CardContent,
@@ -12,10 +13,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { type Duel, type ProcessedDuel, type RoundData, type GeoJson, type CountryData } from '@/lib/types'
 import { MatchRoundsTable } from '@/app/match-rounds-table'
 import { RecentMatchesTable } from '@/app/recent-matches-table'
+import { processDuels } from '@/lib/utils'
 import { SortableTable, type ColumnDef } from '@/components/ui/sortable-table'
-import { QueryBuilder } from '@/components/ui/query-builder'
 import { applyFilters, type Filter } from '@/lib/filters'
-import { type MapProps } from '@/components/Map';
+import { type MapProps } from '@/components/Map'
+import { DateRangePopover } from '@/components/ui/date-range-popover'
 
 const Map = dynamic<MapProps>(() => import('@/components/Map'), {
   ssr: false,
@@ -23,13 +25,6 @@ const Map = dynamic<MapProps>(() => import('@/components/Map'), {
 
 // This should ideally be configurable by the user or from environment variables.
 const MY_PLAYER_ID = '608a7f9394d95300015224ac'
-
-function getGameMode(options?: { map?: { name?: string; }; movementOptions?: { forbidMoving?: boolean; forbidZooming?: boolean; forbidPanning?: boolean; }; }) {
-    if (!options?.movementOptions) return 'MOVE';
-    if (options.movementOptions.forbidMoving && options.movementOptions.forbidZooming) return 'NMPZ';
-    if (options.movementOptions.forbidMoving) return 'NM';
-    return 'MOVE';
-}
 
 import { getFlagEmoji } from '@/lib/utils';
 
@@ -122,6 +117,15 @@ export default function DashboardPage() {
   const [selectedRoundData, setSelectedRoundData] = useState<RoundData | null>(null);
   const [selectedCountryRounds, setSelectedCountryRounds] = useState<RoundData[] | null>(null);
   const [filters, setFilters] = useState<Filter<ProcessedDuel>[]>([]);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+
+  const minDate = useMemo(() => {
+    if (duels.length === 0) return new Date();
+    return duels.reduce((min, duel) => {
+      const duelDate = new Date(duel.rounds?.[0]?.startTime || new Date());
+      return duelDate < min ? duelDate : min;
+    }, new Date());
+  }, [duels]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -183,109 +187,20 @@ export default function DashboardPage() {
   };
 
   const processedDuels = useMemo(() => {
-    const mappedDuels = duels
-      .map((duel) => {
-        if (!duel.teams || duel.teams.length < 2 || !duel.rounds || duel.rounds.length === 0) {
-          return null
-        }
-        const teamsWithIsMe = duel.teams.map(team => ({
-          ...team,
-          players: team.players.map(player => ({
-            ...player,
-            isMe: player.playerId === MY_PLAYER_ID,
-          })),
-        }));
-        const meTeam = duel.teams.find((t) => t.players[0]?.playerId === MY_PLAYER_ID)
-        const opponentTeam = duel.teams.find((t) => t.players[0]?.playerId !== MY_PLAYER_ID)
-        if (!meTeam || !opponentTeam || !meTeam.players[0] || !opponentTeam.players[0]) {
-          return null
-        }
-        const mePlayer = meTeam.players[0];
-        const opponentPlayer = opponentTeam.players[0];
-        const myScore = mePlayer.guesses.reduce((sum, g) => sum + g.score, 0)
-        const opponentScore = opponentPlayer.guesses.reduce((sum, g) => sum + g.score, 0)
-        let outcome: ProcessedDuel['outcome'] = 'Unknown';
-        if (duel.result?.winningTeamId) {
-            if (duel.result.winningTeamId === meTeam.id) {
-                outcome = 'Win';
-            } else {
-                outcome = 'Loss';
-            }
-        } else {
-            if (myScore === opponentScore) {
-                outcome = 'Draw';
-            } else {
-                outcome = 'Unknown';
-            }
-        }
-
-        const ratingBefore = mePlayer.progressChange?.rankedSystemProgress?.ratingBefore;
-        const ratingAfter = mePlayer.progressChange?.rankedSystemProgress?.ratingAfter;
-        const mmrChange = (ratingAfter !== undefined && ratingBefore !== undefined) ? ratingAfter - ratingBefore : undefined;
-
-        const gameDate = duel.rounds?.[0]?.startTime
-        const processedDuel: ProcessedDuel = {
-          ...duel,
-          teams: teamsWithIsMe,
-          date: new Date(gameDate || 0),
-          myScore,
-          opponentScore,
-          outcome: outcome,
-          gameMode: getGameMode(duel.options),
-          mmr: ratingAfter,
-          mmrChange: mmrChange,
-          rounds: duel.rounds?.map((round) => {
-            const myGuess = mePlayer.guesses.find(g => g.roundNumber === round.roundNumber);
-            const opponentGuess = opponentPlayer.guesses.find(g => g.roundNumber === round.roundNumber);
-            if (!myGuess || !opponentGuess) return null;
-            const myGuessTime = myGuess ? (new Date(myGuess.created as string).getTime() - new Date(round.startTime as string).getTime()) / 1000 : 0;
-            const opponentGuessTime = opponentGuess ? (new Date(opponentGuess.created as string).getTime() - new Date(round.startTime as string).getTime()) / 1000 : 0;
-            const scoreDelta = (myGuess?.score || 0) - (opponentGuess?.score || 0);
-            const myGuessDistance = (myGuess?.distance || 0) / 10;
-            const opponentGuessDistance = (opponentGuess?.distance || 0) / 10;
-            const distDelta = myGuessDistance - opponentGuessDistance;
-            const timeDelta = myGuessTime - opponentGuessTime;
-            return {
-              actual: {
-                lat: round.panorama?.lat || 0,
-                lng: round.panorama?.lng || 0,
-                heading: round.panorama?.heading,
-                pitch: round.panorama?.pitch,
-                zoom: round.panorama?.zoom,
-              } as RoundData['actual'],
-              myGuess: { lat: myGuess?.lat || 0, lng: myGuess?.lng || 0, score: myGuess?.score || 0, distance: myGuessDistance, time: myGuessTime },
-              opponentGuess: { lat: opponentGuess?.lat || 0, lng: opponentGuess?.lng || 0, score: opponentGuess?.score || 0, distance: opponentGuessDistance, time: opponentGuessTime },
-              roundNumber: round.roundNumber,
-              countryCode: round.panorama?.countryCode?.toLowerCase() || '',
-              duelId: duel.gameId,
-              myPlayerId: mePlayer.playerId,
-              opponentPlayerId: opponentPlayer.playerId,
-              date: new Date(round.startTime),
-              won: (myGuess?.score || 0) > (opponentGuess?.score || 0),
-              scoreDelta: scoreDelta,
-              distDelta: distDelta,
-              timeDelta: timeDelta,
-              multiplier: round.multiplier as number | undefined,
-              damage: (round.multiplier !== undefined && round.multiplier !== null) ? scoreDelta * (round.multiplier as number) : undefined,
-              gameMode: getGameMode(duel.options),
-            } as RoundData;
-          }).filter((r): r is RoundData => r !== null),
-        }
-        return processedDuel;
-      })
-      .filter((d): d is ProcessedDuel => d !== null);
-
-    const sortedDuels = mappedDuels.sort((a, b) => {
-        const timeA = new Date(a.teams?.[0]?.players?.[0]?.guesses?.[0]?.created || 0).getTime();
-        const timeB = new Date(b.teams?.[0]?.players?.[0]?.guesses?.[0]?.created || 0).getTime();
-        if(isNaN(timeA) || isNaN(timeB)) {
-            return 0;
-        }
-        return timeB - timeA;
-      });
-    
-    return sortedDuels;
-  }, [duels]);
+    const filteredByDate = duels.filter(duel => {
+      if (!dateRange?.from) return true;
+      if (!duel.rounds || duel.rounds.length === 0) return false;
+      const duelDate = new Date(duel.rounds[0]?.startTime);
+      if (dateRange.from && duelDate < dateRange.from) return false;
+      if (dateRange.to) {
+        const endDate = new Date(dateRange.to);
+        endDate.setHours(23, 59, 59, 999);
+        if (duelDate > endDate) return false;
+      }
+      return true;
+    });
+    return processDuels(filteredByDate, MY_PLAYER_ID);
+  }, [duels, dateRange]);
 
   const filteredDuels = useMemo(() => {
     return applyFilters(processedDuels, filters);
@@ -339,11 +254,9 @@ export default function DashboardPage() {
 
   return (
     <>
-      <header className="p-4 border-b">
+      <header className="p-4 border-b flex justify-between items-center relative z-10">
         <h1 className="text-xl font-bold text-gray-800">GeoGuessr Stats Dashboard</h1>
-        <div className="mt-2">
-          <QueryBuilder setFilters={setFilters} />
-        </div>
+        <DateRangePopover date={dateRange} onDateChange={setDateRange} minDate={minDate} />
       </header>
       
       <main className="grid grid-cols-12 flex-grow gap-4 p-4 overflow-hidden">

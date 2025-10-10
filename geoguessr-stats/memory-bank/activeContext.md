@@ -2,17 +2,18 @@
 
 ## Current Focus
 
-The primary focus is on resolving a data sorting issue within the main dashboard. After migrating to a Vercel KV database, the duel data fetched from the `/api/duels` endpoint is in an arbitrary order. This causes the UI to display matches incorrectly, not chronologically as intended.
+The current focus is on implementing a sophisticated date range picker component to allow users to filter match data by a selected time period. This feature is being added to the "Vibe" page first, and will then be integrated into the main dashboard.
 
 ## Problem Details
 
-- **Issue:** The "Recent Matches" table does not show the newest games first.
-- **Root Cause:** The Upstash database (Vercel KV) does not guarantee the order of items returned from `keys()` and `mget()`.
-- **Attempted Fixes:**
-    1.  An initial client-side sort was added, but it was being overridden by another sort operation.
-    2.  A second attempt was made to correct the sorting logic using a more reliable timestamp (`guesses[0].created`), but this also failed to produce the correct order.
+-   **Styling Issues:** The date picker popover is experiencing several visual glitches:
+    -   The calendar popover is not correctly aligned and has z-index issues, causing it to be obscured by other elements like the map.
+    -   The calendar's day-of-the-week headers ("Su", "Mo", etc.) are misaligned.
+    -   The visual distinction between the currently selected date range and today's date is not clear enough.
 
 ## Next Steps
 
-- **Diagnose:** Investigate why the latest sorting logic is not working as expected. This may involve logging the data at various stages of the processing pipeline to see how it's being transformed.
-- **Implement a Robust Solution:** Develop a reliable client-side sorting mechanism that correctly orders the duels from newest to oldest before they are rendered.
+-   **Refine Calendar Styling:** Adjust the CSS for the `Calendar` component to fix the header alignment and improve the visual representation of the selected range and today's date.
+-   **Ensure Correct Stacking:** Modify the component structure and z-index values to guarantee the date picker popover always appears on top of other UI elements.
+-   **Finalize Vibe Page:** Complete the implementation and styling fixes for the "Vibe" page.
+-   **Main Dashboard Integration:** Once the component is finalized, remove the old filter UI from the main dashboard and integrate the new `DateRangePicker`.

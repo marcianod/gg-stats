@@ -93,3 +93,10 @@
 *   [x] Added dynamic marker coloring to visualize cache status.
 *   [x] Corrected the panorama orientation using duel data.
 *   [x] Adjusted the map to make countries without data transparent.
+
+### Date Slider Implementation
+
+*   [x] Replaced the `DateRangePicker` with a new `DateSlider` component.
+*   [x] Implemented a popover to house the date slider and presets.
+*   [x] Integrated the new `DateRangePopover` into the "Vibe" page and the main dashboard.
+*   [x] Ensured the date filter correctly filters the data on the main dashboard.

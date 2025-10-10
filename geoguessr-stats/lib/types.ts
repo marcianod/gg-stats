@@ -125,6 +125,15 @@ export interface RoundData {
   gameMode?: string;
 }
 
+export interface VibeLocation {
+  lat: number;
+  lng: number;
+  heading?: number;
+  pitch?: number;
+  zoom?: number;
+  performanceValue: number;
+}
+
 export interface CountryProperties {
     'ISO3166-1-Alpha-2': string;
     name: string;

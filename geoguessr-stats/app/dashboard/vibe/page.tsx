@@ -1,12 +1,21 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Duel, GeoJson, CountryData } from '@/lib/types';
+import { Duel, GeoJson, CountryData, VibeLocation, RoundData, ProcessedDuel } from '@/lib/types';
 import dynamic from 'next/dynamic';
 import { Rnd } from 'react-rnd';
+import { processDuels } from '@/lib/utils';
 import { Lock, Unlock } from 'lucide-react';
+import { DateRangePopover } from '@/components/ui/date-range-popover';
+import { DateRange } from 'react-day-picker';
+import { Button } from '@/components/ui/button';
 
 const Map = dynamic(() => import('@/components/Map'), { ssr: false });
+
+interface PerformanceRange {
+  min: number;
+  max: number;
+}
 
 interface PinnedLocation {
   lat: number;
@@ -26,10 +35,10 @@ interface HistoryState {
 }
 
 export default function VibePage() {
-  const [duels, setDuels] = useState<Duel[]>([]);
+  const [duels, setDuels] = useState<ProcessedDuel[]>([]);
   const [geoJson, setGeoJson] = useState<GeoJson | null>(null);
   const [activeLocation, setActiveLocation] = useState<HistoryState['activeLocation']>(null);
-  const [cachedLocations, setCachedLocations] = useState<{ lat: number; lng: number; heading?: number; pitch?: number; zoom?: number }[]>([]);
+  const [cachedLocations, setCachedLocations] = useState<VibeLocation[]>([]);
   const [pinnedLocations, setPinnedLocations] = useState<PinnedLocation[]>([]);
   const [history, setHistory] = useState<HistoryState[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
@@ -38,6 +47,8 @@ export default function VibePage() {
   const [windowSize, setWindowSize] = useState({ width: 640, height: 480 });
   const [windowPosition, setWindowPosition] = useState({ x: 50, y: 50 });
   const [isLocked, setIsLocked] = useState(false);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({ from: new Date(new Date().setDate(new Date().getDate() - 30)), to: new Date() });
+  const [colorMode, setColorMode] = useState<'absolute' | 'delta' | 'impact'>('delta');
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const CACHE_LIMIT = 10;
   const PIN_LIMIT = 5;
@@ -61,7 +72,7 @@ export default function VibePage() {
     }
     fetch('/api/duels')
       .then((res) => res.json())
-      .then((data) => setDuels(data))
+      .then((data) => setDuels(processDuels(data, '608a7f9394d95300015224ac')))
       .catch(error => console.error('Error fetching duels:', error));
     fetch('/data/countries.geojson')
       .then((res) => res.json())
@@ -79,12 +90,20 @@ export default function VibePage() {
     setHistoryIndex(newHistory.length);
   }, [history, historyIndex, pinnedLocations, activeLocation]);
 
+  const minDate = useMemo(() => {
+    if (duels.length === 0) return new Date();
+    return duels.reduce((min, duel) => {
+      const duelDate = new Date(duel.date || new Date());
+      return duelDate < min ? duelDate : min;
+    }, new Date());
+  }, [duels]);
+
   const countryStats = useMemo(() => {
     const stats: { [key: string]: CountryData } = {};
     duels.forEach(duel => {
       if (duel.rounds) {
         duel.rounds.forEach(round => {
-          const countryCode = round.panorama?.countryCode;
+          const countryCode = round.countryCode;
           if (countryCode) {
             if (!stats[countryCode]) {
               stats[countryCode] = {
@@ -108,30 +127,55 @@ export default function VibePage() {
   }, [duels]);
 
   const allLocations = useMemo(() => {
-    const locations: { lat: number; lng: number; heading?: number; pitch?: number; zoom?: number }[] = [];
+    const locations: VibeLocation[] = [];
     duels.forEach(duel => {
       if (duel.rounds) {
         duel.rounds.forEach(round => {
-          if (round.panorama) {
+          const roundDate = new Date(round.date);
+          if (dateRange?.from && roundDate < dateRange.from) return;
+          if (dateRange?.to) {
+            const endDate = new Date(dateRange.to);
+            endDate.setHours(23, 59, 59, 999);
+            if (roundDate > endDate) return;
+          }
+          if (round.actual) {
+            const performanceValue = colorMode === 'absolute'
+              ? round.myGuess.score ?? 0
+              : colorMode === 'delta'
+                ? round.scoreDelta ?? 0
+                : (round.scoreDelta ?? 0) * (1 - ((round.myGuess.score ?? 0) + (round.opponentGuess.score ?? 0)) / 10000);
+
             locations.push({
-              lat: round.panorama.lat,
-              lng: round.panorama.lng,
-              heading: round.panorama.heading,
-              pitch: round.panorama.pitch,
-              zoom: round.panorama.zoom,
+              lat: round.actual.lat,
+              lng: round.actual.lng,
+              heading: round.actual.heading,
+              pitch: round.actual.pitch,
+              zoom: round.actual.zoom,
+              performanceValue,
             });
           }
         });
       }
     });
     return locations;
-  }, [duels]);
+  }, [duels, dateRange, colorMode]);
+
+  const performanceRange = useMemo(() => {
+    if (allLocations.length === 0) {
+      return { min: 0, max: 5000 };
+    }
+    const values = allLocations.map(l => l.performanceValue);
+    return {
+      min: Math.min(...values),
+      max: Math.max(...values),
+    };
+  }, [allLocations]);
 
   const handleCountryClick = () => {
     setActiveLocation(null);
   };
 
-  const handleLocationClick = (location: { lat: number; lng: number; heading?: number; pitch?: number; zoom?: number }) => {
+  const handleLocationClick = (location: VibeLocation) => {
     recordHistory();
     const newZIndex = topZIndex + 1;
     setTopZIndex(newZIndex);
@@ -148,7 +192,7 @@ export default function VibePage() {
     }
   };
 
-  const handleLocationPin = (location: { lat: number; lng: number; heading?: number; pitch?: number; zoom?: number }) => {
+  const handleLocationPin = (location: VibeLocation) => {
     recordHistory();
     setPinnedLocations(prev => {
       const isPinned = prev.some(p => p.lat === location.lat && p.lng === location.lng);
@@ -234,6 +278,36 @@ export default function VibePage() {
 
   return (
     <div className="h-full w-full relative p-4">
+      <div className="absolute top-4 left-16 z-[6000] flex items-center gap-4">
+        <DateRangePopover
+          date={dateRange}
+          onDateChange={setDateRange}
+          minDate={minDate}
+        />
+        <div className="flex items-center gap-2 bg-white p-1 rounded-md shadow-md">
+          <Button
+            variant={colorMode === 'delta' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => setColorMode('delta')}
+          >
+            Score Delta
+          </Button>
+          <Button
+            variant={colorMode === 'absolute' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => setColorMode('absolute')}
+          >
+            Absolute Score
+          </Button>
+          <Button
+            variant={colorMode === 'impact' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => setColorMode('impact')}
+          >
+            Impact Score
+          </Button>
+        </div>
+      </div>
       {geoJson && (
         <Map
           geoJson={geoJson}
@@ -245,6 +319,7 @@ export default function VibePage() {
           cachedLocations={cachedLocations}
           activeLocation={activeLocation}
           pinnedLocations={pinnedLocations}
+          performanceRange={performanceRange}
         />
       )}
       {activeLocation && (
@@ -335,7 +410,7 @@ export default function VibePage() {
               {location.isLocked ? <Lock size={18} /> : <Unlock size={18} />}
             </button>
             <button
-              onClick={() => handleLocationPin(location)}
+              onClick={() => handleLocationPin({ ...location, performanceValue: 0 })}
               className="absolute top-2 right-2 z-10 bg-white rounded-full p-1 text-gray-500 hover:text-gray-800"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>

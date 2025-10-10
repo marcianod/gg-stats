@@ -6,7 +6,7 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import { MapContainer, TileLayer, Marker, Polyline, useMap, GeoJSON, CircleMarker } from 'react-leaflet';
 import L from 'leaflet';
 import { useEffect, useRef, useState } from 'react';
-import { RoundData, CountryData, GeoJson, CountryProperties } from '../lib/types';
+import { RoundData, CountryData, GeoJson, CountryProperties, VibeLocation } from '../lib/types';
 import { Feature, FeatureCollection, Geometry } from 'geojson';
 
 // Custom icon definitions
@@ -37,12 +37,13 @@ export interface MapProps {
   selectedCountry?: CountryData | null;
   onCountrySelect?: (countryCode: string) => void;
   onCountryClick?: (countryCode: string) => void;
-  locations?: { lat: number; lng: number; heading?: number; pitch?: number; zoom?: number }[];
-  onLocationClick?: (location: { lat: number; lng: number; heading?: number; pitch?: number; zoom?: number }) => void;
-  onLocationPin?: (location: { lat: number; lng: number; heading?: number; pitch?: number; zoom?: number }) => void;
-  cachedLocations?: { lat: number; lng: number }[];
+  locations?: VibeLocation[];
+  onLocationClick?: (location: VibeLocation) => void;
+  onLocationPin?: (location: VibeLocation) => void;
+  cachedLocations?: VibeLocation[];
   activeLocation?: { lat: number; lng: number } | null;
   pinnedLocations?: { lat: number; lng: number }[];
+  performanceRange?: { min: number; max: number };
 }
 
 function getColorForWinRate(winRate: number | undefined): string {
@@ -107,77 +108,73 @@ function ChoroplethLayer({ geoJson, countryStats, onCountrySelect, selectedCount
     return <GeoJSON ref={geoJsonLayer} data={geoJson as FeatureCollection<Geometry, CountryProperties>} style={style} onEachFeature={onEachFeature} />;
 }
 
-function HeatmapMarkers({ locations, onLocationClick, onLocationPin, cachedLocations, activeLocation, pinnedLocations }: MapProps) {
+function HeatmapMarkers({ locations, onLocationClick, onLocationPin, cachedLocations, activeLocation, pinnedLocations, performanceRange }: MapProps) {
   const map = useMap();
   const [zoomLevel, setZoomLevel] = useState(map.getZoom());
+  const [bounds, setBounds] = useState(map.getBounds());
   const [isDragging, setIsDragging] = useState(false);
 
+  const getColorFromValue = (value: number, min: number, max: number) => {
+    if (max === min) return 'rgb(255, 255, 0)';
+    const percentage = (value - min) / (max - min);
+    const r = percentage < 0.5 ? 255 : Math.round(255 * (1 - (percentage - 0.5) * 2));
+    const g = percentage > 0.5 ? 255 : Math.round(255 * (percentage * 2));
+    return `rgb(${r}, ${g}, 0)`;
+  };
+
   useEffect(() => {
-    const handleZoom = () => setZoomLevel(map.getZoom());
+    const handleMove = () => {
+      setZoomLevel(map.getZoom());
+      setBounds(map.getBounds());
+    };
     const handleDragStart = () => setIsDragging(true);
     const handleDragEnd = () => setIsDragging(false);
 
-    map.on('zoomend', handleZoom);
+    map.on('moveend', handleMove);
     map.on('dragstart', handleDragStart);
     map.on('dragend', handleDragEnd);
 
     return () => {
-      map.off('zoomend', handleZoom);
+      map.off('moveend', handleMove);
       map.off('dragstart', handleDragStart);
       map.off('dragend', handleDragEnd);
     };
   }, [map]);
 
-  const getPathOptions = (loc: { lat: number; lng: number; }, cacheIndex: number, isActive: boolean, isPinned: boolean) => {
-    const baseRadius = 0.5 + (zoomLevel / 18) * 15;
-    const baseOpacity = 0.1 + (zoomLevel / 18) * 0.8;
+  const visibleLocations = locations?.filter(loc => bounds.contains([loc.lat, loc.lng]));
 
-    if (isPinned) {
-      return { radius: baseRadius + 2, color: '#800080', fillColor: '#800080', fillOpacity: 1.0, weight: 2, dashArray: '5, 5' };
-    }
-    if (isActive) {
-      return { radius: baseRadius + 2, color: '#ff0000', fillColor: '#ff0000', fillOpacity: 1.0 };
-    }
-    if (cacheIndex !== -1) {
-      const factor = cacheIndex / Math.max(1, (cachedLocations?.length || 1) - 1);
-      const g = 255 * factor;
-      return { radius: baseRadius, color: `rgb(255, ${g}, 0)`, fillColor: `rgb(255, ${g}, 0)`, fillOpacity: baseOpacity + 0.1 };
-    }
-    return { radius: baseRadius, color: 'blue', fillColor: 'blue', fillOpacity: baseOpacity };
+  const getPathOptions = (loc: VibeLocation, isActive: boolean, isPinned: boolean) => {
+    const { min, max } = performanceRange || { min: 0, max: 5000 };
+    const color = getColorFromValue(loc.performanceValue, min, max);
+    const baseRadius = zoomLevel < 5 ? 1 + zoomLevel * 0.5 : 3 + (zoomLevel - 5) * 1.5;
+    const baseOpacity = zoomLevel < 5 ? 0.6 : 0.8;
+
+    if (isPinned) return { radius: baseRadius + 2, color: '#800080', fillColor: '#800080', fillOpacity: 1.0, weight: 2, dashArray: '5, 5' };
+    if (isActive) return { radius: baseRadius + 2, color: '#ff0000', fillColor: '#ff0000', fillOpacity: 1.0 };
+    return { radius: baseRadius, color, fillColor: color, fillOpacity: baseOpacity, weight: 0 };
   };
 
   return (
     <>
-      {locations?.map((loc, index) => {
-        const cacheIndex = cachedLocations?.findIndex(l => l.lat === loc.lat && l.lng === loc.lng) ?? -1;
+      {visibleLocations?.map((loc, index) => {
         const isActive = activeLocation?.lat === loc.lat && activeLocation?.lng === loc.lng;
         const isPinned = pinnedLocations?.some(p => p.lat === loc.lat && p.lng === loc.lng) ?? false;
-        const pathOptions = getPathOptions(loc, cacheIndex, isActive, isPinned);
+        const pathOptions = getPathOptions(loc, isActive, isPinned);
 
         return (
           <CircleMarker
-            key={index}
+            key={`${loc.lat}-${loc.lng}-${index}`}
             center={[loc.lat, loc.lng]}
             radius={pathOptions.radius}
             pathOptions={pathOptions}
             eventHandlers={{
-              click: () => {
-                if (!isDragging && onLocationClick) {
-                  onLocationClick(loc);
-                }
-              },
-              contextmenu: (e) => { // Using contextmenu for right-click
+              click: () => !isDragging && onLocationClick?.(loc),
+              contextmenu: (e) => {
                 if (!isDragging && onLocationPin) {
                   onLocationPin(loc);
+                  L.DomEvent.stop(e.originalEvent);
                 }
-                L.DomEvent.stopPropagation(e.originalEvent);
-                L.DomEvent.preventDefault(e.originalEvent);
               },
-              mouseup: (e) => { // Using mouseup for middle-click
-                if (!isDragging && e.originalEvent.button === 1 && onLocationPin) {
-                  onLocationPin(loc);
-                }
-              }
             }}
           />
         );
