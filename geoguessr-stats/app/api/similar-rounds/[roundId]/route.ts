@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { MongoClient } from 'mongodb';
 
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -28,11 +28,11 @@ interface EmbeddingDocument {
 }
 
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { roundId: string } }
 ) {
   try {
-    const { roundId } = await params;
+    const { roundId } = params;
     if (!roundId) {
       return new NextResponse('Round ID is required', { status: 400 });
     }
