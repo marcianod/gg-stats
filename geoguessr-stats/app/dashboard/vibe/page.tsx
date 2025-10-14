@@ -72,7 +72,7 @@ export default function VibePage() {
       .then((res) => res.json())
       .then((data) => setGeoJson(data))
       .catch(error => console.error('Error fetching geojson:', error));
-    fetch('/data/round_embeddings.json')
+    fetch('/api/embeddings')
       .then((res) => res.json())
       .then((data) => setEmbeddings(data))
       .catch(error => console.error('Error fetching embeddings:', error));

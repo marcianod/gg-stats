@@ -3,17 +3,14 @@ import path from 'path';
 import { Duel } from '../lib/types';
 import dotenv from 'dotenv';
 import { PredictionServiceClient, helpers } from '@google-cloud/aiplatform';
+import { kv } from '@vercel/kv';
 
 // Load environment variables from .env.local
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
-// Make sure to create a .env.local file with your API keys
-// GOOGLE_STREET_VIEW_API_KEY=your_google_api_key
-// VERTEX_AI_PROJECT_ID=your_gcp_project_id
 
 const GOOGLE_API_KEY = process.env.GOOGLE_STREET_VIEW_API_KEY;
 const VERTEX_PROJECT_ID = process.env.VERTEX_AI_PROJECT_ID;
 
-const EMBEDDINGS_FILE_PATH = path.join(process.cwd(), 'public/data/round_embeddings.json');
 const IMAGES_DIR_PATH = path.join(process.cwd(), 'public/data/round_images');
 
 interface RoundEmbedding {
@@ -86,7 +83,6 @@ async function generateEmbedding(imageBuffer: Buffer): Promise<number[]> {
     throw new Error('API response did not contain a valid image embedding.');
   }
 
-  // The embedding is returned as an array of Value objects, so we need to extract the numberValue from each.
   return prediction.structValue.fields.imageEmbedding.listValue.values.map((v: any) => v.numberValue);
 }
 
@@ -94,18 +90,7 @@ async function main() {
   console.log('Starting embedding generation process...');
 
   try {
-    // Ensure images directory exists
     await fs.mkdir(IMAGES_DIR_PATH, { recursive: true });
-
-    // Load existing embeddings
-    let existingEmbeddings: RoundEmbedding = {};
-    try {
-      const fileContent = await fs.readFile(EMBEDDINGS_FILE_PATH, 'utf-8');
-      existingEmbeddings = JSON.parse(fileContent);
-      console.log(`Loaded ${Object.keys(existingEmbeddings).length} existing embeddings.`);
-    } catch (error) {
-      console.log('No existing embeddings file found. Starting fresh.');
-    }
 
     console.log('Fetching duel data from API...');
     const duelsResponse = await fetch('http://localhost:3000/api/duels');
@@ -123,16 +108,17 @@ async function main() {
         for (let i = 0; i < duel.rounds.length; i++) {
           const round = duel.rounds[i] as any;
           const roundId = `${duel.gameId}_${i + 1}`;
+          const embeddingKey = `embedding:${roundId}`;
 
-          // Skip if embedding already exists
-          if (existingEmbeddings[roundId]) {
+          // Skip if embedding already exists in KV store
+          const existingEmbedding = await kv.get(embeddingKey);
+          if (existingEmbedding) {
             continue;
           }
           
-          // Add a check to ensure the necessary data exists before processing.
           if (!round.panorama || typeof round.panorama.heading === 'undefined' || typeof round.panorama.lat === 'undefined' || typeof round.panorama.lng === 'undefined') {
             console.warn(`Skipping round ${roundId} due to missing panorama data.`);
-            continue; // Skip to the next round
+            continue;
           }
 
           console.log(`Processing new round: ${roundId}`);
@@ -157,7 +143,7 @@ async function main() {
             }
 
             const embedding = await generateEmbedding(imageBuffer);
-            newEmbeddings[roundId] = embedding;
+            newEmbeddings[embeddingKey] = embedding;
             roundsProcessed++;
           } catch (error) {
             console.error(`Skipping round ${roundId} due to an error:`, error);
@@ -167,9 +153,9 @@ async function main() {
     }
 
     if (roundsProcessed > 0) {
-      const allEmbeddings = { ...existingEmbeddings, ...newEmbeddings };
-      await fs.writeFile(EMBEDDINGS_FILE_PATH, JSON.stringify(allEmbeddings, null, 2));
-      console.log(`Successfully generated and saved embeddings for ${roundsProcessed} new rounds. Total embeddings: ${Object.keys(allEmbeddings).length}.`);
+      console.log(`Saving ${roundsProcessed} new embeddings to Vercel KV...`);
+      await kv.mset(newEmbeddings);
+      console.log(`Successfully generated and saved embeddings for ${roundsProcessed} new rounds.`);
     } else {
       console.log('No new rounds to process. Embeddings are up to date.');
     }
