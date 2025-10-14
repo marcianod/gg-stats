@@ -44,6 +44,7 @@ export interface MapProps {
   activeLocation?: VibeLocation | null;
   pinnedLocations?: { lat: number; lng: number }[];
   performanceRange?: { min: number; max: number };
+  similarRounds?: string[];
 }
 
 function getColorForWinRate(winRate: number | undefined): string {
@@ -108,12 +109,13 @@ function ChoroplethLayer({ geoJson, countryStats, onCountrySelect, selectedCount
     return <GeoJSON ref={geoJsonLayer} data={geoJson as FeatureCollection<Geometry, CountryProperties>} style={style} onEachFeature={onEachFeature} />;
 }
 
-function HeatmapMarkers({ locations, onLocationClick, onLocationPin, activeLocation, pinnedLocations, performanceRange }: MapProps) {
+function HeatmapMarkers({ locations, onLocationClick, onLocationPin, activeLocation, pinnedLocations, performanceRange, similarRounds }: MapProps) {
   const map = useMap();
-  const [bounds, setBounds] = useState(map.getBounds());
+  const [renderTrigger, setRenderTrigger] = useState(0);
   const isDragging = useRef(false);
 
   const zoomLevel = map.getZoom();
+  const bounds = map.getBounds();
 
   const getColorFromValue = (value: number, min: number, max: number) => {
     if (max === min) return 'rgb(255, 255, 0)';
@@ -124,48 +126,63 @@ function HeatmapMarkers({ locations, onLocationClick, onLocationPin, activeLocat
   };
 
   useEffect(() => {
-    let throttleTimeout: NodeJS.Timeout | null = null;
+    let animationFrameId: number | null = null;
 
-    const onMove = () => {
-      if (throttleTimeout) return;
-
-      throttleTimeout = setTimeout(() => {
-        setBounds(map.getBounds());
-        throttleTimeout = null;
-      }, 50); // Throttle updates to every 50ms
+    const update = () => {
+      if (animationFrameId) {
+        return;
+      }
+      animationFrameId = requestAnimationFrame(() => {
+        map.invalidateSize();
+        setRenderTrigger(prev => prev + 1);
+        animationFrameId = null;
+      });
     };
-    
+
     const handleDragStart = () => isDragging.current = true;
     const handleDragEnd = () => {
       isDragging.current = false;
-      // Final update to ensure the last position is rendered
-      setBounds(map.getBounds());
+      update(); // Ensure a final update on drag end
     };
 
-    map.on('move', onMove);
+    map.on('move', update);
     map.on('dragstart', handleDragStart);
     map.on('dragend', handleDragEnd);
 
     return () => {
-      map.off('move', onMove);
+      map.off('move', update);
       map.off('dragstart', handleDragStart);
       map.off('dragend', handleDragEnd);
-      if (throttleTimeout) {
-        clearTimeout(throttleTimeout);
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
       }
     };
   }, [map]);
 
   const visibleLocations = locations?.filter(loc => bounds.contains([loc.lat, loc.lng]));
 
-  const getPathOptions = (loc: VibeLocation, isActive: boolean, isPinned: boolean) => {
+  const getPathOptions = (loc: VibeLocation, isActive: boolean, isPinned: boolean, isSimilar: boolean) => {
     const { min, max } = performanceRange || { min: 0, max: 5000 };
     const color = getColorFromValue(loc.performanceValue, min, max);
     const baseRadius = zoomLevel < 6 ? 2 + zoomLevel * 0.8 : 6 + (zoomLevel - 6) * 1.2;
+    const isSimilaritySearchActive = similarRounds && similarRounds.length > 0;
 
-    if (isPinned) return { radius: baseRadius + 2, color: '#800080', fillColor: '#800080', fillOpacity: 1.0, weight: 2, dashArray: '5, 5' };
-    if (isActive) return { radius: baseRadius + 4, color: '#FFFFFF', weight: 2.5, fillColor: color, fillOpacity: 1.0 };
-    return { radius: baseRadius, color: '#000000', weight: 1.5, fillColor: color, fillOpacity: 1.0 };
+    if (isSimilar) {
+      // Style for the highlighted similar rounds
+      return { radius: baseRadius + 10, color: '#9333ea', weight: 5, fillColor: color, fillOpacity: 1.0 };
+    }
+    if (isPinned) {
+      return { radius: baseRadius + 2, color: '#800080', fillColor: '#800080', fillOpacity: 1.0, weight: 2, dashArray: '5, 5' };
+    }
+    if (isActive) {
+      return { radius: baseRadius + 4, color: '#000000', weight: 2.5, fillColor: color, fillOpacity: 1.0 };
+    }
+    if (isSimilaritySearchActive) {
+      // When a search is active, this is the style for the faded out, non-similar rounds
+      return { radius: baseRadius, color: '#cccccc', weight: 1, fillColor: '#aaaaaa', fillOpacity: 0.8 };
+    }
+    // Default style for all rounds when no similarity search is active
+    return { radius: baseRadius, color: '#000000d0', weight: 2.5, fillColor: color, fillOpacity: 1.0 };
   };
 
   return (
@@ -173,7 +190,9 @@ function HeatmapMarkers({ locations, onLocationClick, onLocationPin, activeLocat
       {visibleLocations?.map((loc, index) => {
         const isActive = activeLocation?.lat === loc.lat && activeLocation?.lng === loc.lng;
         const isPinned = pinnedLocations?.some(p => p.lat === loc.lat && p.lng === loc.lng) ?? false;
-        const pathOptions = getPathOptions(loc, isActive, isPinned);
+        const roundId = `${loc.round.duelId}_${loc.round.roundNumber}`;
+        const isSimilar = similarRounds?.includes(roundId) ?? false;
+        const pathOptions = getPathOptions(loc, isActive, isPinned, isSimilar);
 
         return (
           <CircleMarker

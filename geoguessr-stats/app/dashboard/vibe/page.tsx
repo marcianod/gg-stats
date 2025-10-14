@@ -5,6 +5,7 @@ import { GeoJson, CountryData, VibeLocation, ProcessedDuel } from '@/lib/types';
 import dynamic from 'next/dynamic';
 import { Rnd } from 'react-rnd';
 import { processDuels } from '@/lib/utils';
+import { findSimilarRounds } from '@/lib/similarity';
 import { Lock, Unlock } from 'lucide-react';
 import { DateRangePopover } from '@/components/ui/date-range-popover';
 import { DateRange } from 'react-day-picker';
@@ -27,6 +28,7 @@ interface HistoryState {
 export default function VibePage() {
   const [duels, setDuels] = useState<ProcessedDuel[]>([]);
   const [geoJson, setGeoJson] = useState<GeoJson | null>(null);
+  const [embeddings, setEmbeddings] = useState<{ [roundId: string]: number[] }>({});
   const [activeLocation, setActiveLocation] = useState<VibeLocation | null>(null);
   const [cachedLocations, setCachedLocations] = useState<VibeLocation[]>([]);
   const [pinnedLocations, setPinnedLocations] = useState<PinnedLocation[]>([]);
@@ -37,6 +39,8 @@ export default function VibePage() {
   const [windowSize, setWindowSize] = useState({ width: 640, height: 480 });
   const [windowPosition, setWindowPosition] = useState({ x: 50, y: 50 });
   const [isLocked, setIsLocked] = useState(false);
+  const [similarRounds, setSimilarRounds] = useState<string[]>([]);
+  const [isSimilarityModeOn, setIsSimilarityModeOn] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange | undefined>({ from: new Date(new Date().setDate(new Date().getDate() - 30)), to: new Date() });
   const [colorMode, setColorMode] = useState<'absolute' | 'delta' | 'impact'>('delta');
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -68,6 +72,10 @@ export default function VibePage() {
       .then((res) => res.json())
       .then((data) => setGeoJson(data))
       .catch(error => console.error('Error fetching geojson:', error));
+    fetch('/data/round_embeddings.json')
+      .then((res) => res.json())
+      .then((data) => setEmbeddings(data))
+      .catch(error => console.error('Error fetching embeddings:', error));
   }, []);
 
   useEffect(() => {
@@ -122,7 +130,11 @@ export default function VibePage() {
       if (duel.rounds) {
         duel.rounds.forEach(round => {
           const roundDate = new Date(round.date);
-          if (dateRange?.from && roundDate < dateRange.from) return;
+          if (dateRange?.from) {
+            const startDate = new Date(dateRange.from);
+            startDate.setHours(0, 0, 0, 0);
+            if (roundDate < startDate) return;
+          }
           if (dateRange?.to) {
             const endDate = new Date(dateRange.to);
             endDate.setHours(23, 59, 59, 999);
@@ -168,6 +180,10 @@ export default function VibePage() {
 
   const handleLocationClick = (location: VibeLocation) => {
     recordHistory();
+    setSimilarRounds([]); // Clear previous similar rounds
+    if (isSimilarityModeOn) {
+      handleFindSimilar(location.round);
+    }
     const newZIndex = topZIndex + 1;
     setTopZIndex(newZIndex);
     setActiveWindowZIndex(newZIndex);
@@ -181,6 +197,12 @@ export default function VibePage() {
         return updatedCache;
       });
     }
+  };
+
+  const handleFindSimilar = (round: VibeLocation['round']) => {
+    const roundId = `${round.duelId}_${round.roundNumber}`;
+    const similar = findSimilarRounds(roundId, embeddings, 10);
+    setSimilarRounds(similar);
   };
 
   const handleLocationPin = (location: VibeLocation) => {
@@ -259,6 +281,11 @@ export default function VibePage() {
           setHistoryIndex(newIndex);
         }
       }
+
+      if (e.key === 'Escape') {
+        setActiveLocation(null);
+        setSimilarRounds([]);
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -275,6 +302,15 @@ export default function VibePage() {
           onDateChange={setDateRange}
           minDate={minDate}
         />
+        <div className="flex items-center gap-2 bg-white p-1 rounded-md shadow-md">
+          <Button
+            variant={isSimilarityModeOn ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => setIsSimilarityModeOn(!isSimilarityModeOn)}
+          >
+            Auto Vibe Check
+          </Button>
+        </div>
         <div className="flex items-center gap-2 bg-white p-1 rounded-md shadow-md">
           <Button
             variant={colorMode === 'delta' ? 'secondary' : 'ghost'}
@@ -311,6 +347,7 @@ export default function VibePage() {
           activeLocation={activeLocation}
           pinnedLocations={pinnedLocations}
           performanceRange={performanceRange}
+          similarRounds={similarRounds}
         />
       )}
       {activeLocation && (
@@ -377,13 +414,15 @@ export default function VibePage() {
                   Impact: {((activeLocation.round.scoreDelta ?? 0) * (1 - ((activeLocation.round.myGuess.score ?? 0) + (activeLocation.round.opponentGuess.score ?? 0)) / 10000)).toFixed(0)}
                 </span>
               </div>
-              <a
-                href={`https://www.geoguessr.com/duels/${activeLocation.round.duelId}/replay?round=${activeLocation.round.roundNumber}`}
+              <div className="flex items-center gap-2">
+                <a
+                  href={`https://www.geoguessr.com/duels/${activeLocation.round.duelId}/replay?round=${activeLocation.round.roundNumber}`}
                 target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Button variant="secondary" size="sm">View Replay</Button>
-              </a>
+                  rel="noopener noreferrer"
+                >
+                  <Button variant="secondary" size="sm">View Replay</Button>
+                </a>
+              </div>
             </div>
           </div>
         </Rnd>

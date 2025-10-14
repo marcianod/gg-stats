@@ -25,7 +25,7 @@ export function DateSlider({
 
   const presets = [
     { name: "Today", range: { from: new Date(), to: new Date() } },
-    { name: "Yesterday", range: { from: subDays(new Date(), 1), to: subDays(new Date(), 1) } },
+    { name: "Yesterday", range: { from: subDays(new Date(), 1), to: new Date() } },
     { name: "Last 7 days", range: { from: subDays(new Date(), 6), to: new Date() } },
     { name: "Last 30 days", range: { from: subDays(new Date(), 29), to: new Date() } },
     { name: "Last 60 days", range: { from: subDays(new Date(), 59), to: new Date() } },
