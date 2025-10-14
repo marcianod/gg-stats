@@ -32,7 +32,7 @@ export async function GET(
   { params }: { params: { roundId: string } }
 ) {
   try {
-    const { roundId } = params;
+    const { roundId } = await params;
     if (!roundId) {
       return new NextResponse('Round ID is required', { status: 400 });
     }
