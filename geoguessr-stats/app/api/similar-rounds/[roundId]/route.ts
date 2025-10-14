@@ -29,10 +29,10 @@ interface EmbeddingDocument {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { roundId: string } }
+  context: { params: Promise<{ roundId: string }> }
 ) {
   try {
-    const { roundId } = params;
+    const { roundId } = await context.params;
     if (!roundId) {
       return new NextResponse('Round ID is required', { status: 400 });
     }
