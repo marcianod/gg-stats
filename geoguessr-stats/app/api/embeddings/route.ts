@@ -3,17 +3,25 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    const keys = await kv.keys('embedding:*');
+    let cursor = 0;
+    const keys: string[] = [];
+    do {
+      const [nextCursor, scannedKeys] = await kv.scan(cursor, { match: 'embedding:*' });
+      keys.push(...scannedKeys);
+      cursor = Number(nextCursor);
+    } while (cursor !== 0);
+
     if (keys.length === 0) {
       return NextResponse.json({});
     }
+
     const embeddings = await kv.mget(...keys);
     
     const embeddingsObject = keys.reduce((acc, key, index) => {
       const roundId = key.replace('embedding:', '');
-      acc[roundId] = embeddings[index];
+      acc[roundId] = embeddings[index] as number[];
       return acc;
-    }, {} as { [key: string]: any });
+    }, {} as { [key: string]: number[] });
 
     return NextResponse.json(embeddingsObject);
   } catch (error) {

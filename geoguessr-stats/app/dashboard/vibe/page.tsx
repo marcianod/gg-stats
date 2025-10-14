@@ -43,6 +43,7 @@ export default function VibePage() {
   const [isSimilarityModeOn, setIsSimilarityModeOn] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange | undefined>({ from: new Date(new Date().setDate(new Date().getDate() - 30)), to: new Date() });
   const [colorMode, setColorMode] = useState<'absolute' | 'delta' | 'impact'>('delta');
+  const [isLoading, setIsLoading] = useState(true);
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const CACHE_LIMIT = 10;
   const PIN_LIMIT = 5;
@@ -64,18 +65,21 @@ export default function VibePage() {
     if (savedLockState) {
       setIsLocked(JSON.parse(savedLockState));
     }
-    fetch('/api/duels')
-      .then((res) => res.json())
-      .then((data) => setDuels(processDuels(data, '608a7f9394d95300015224ac')))
-      .catch(error => console.error('Error fetching duels:', error));
-    fetch('/data/countries.geojson')
-      .then((res) => res.json())
-      .then((data) => setGeoJson(data))
-      .catch(error => console.error('Error fetching geojson:', error));
-    fetch('/api/embeddings')
-      .then((res) => res.json())
-      .then((data) => setEmbeddings(data))
-      .catch(error => console.error('Error fetching embeddings:', error));
+    Promise.all([
+      fetch('/api/duels').then(res => res.json()),
+      fetch('/data/countries.geojson').then(res => res.json()),
+      fetch('/api/embeddings').then(res => res.json())
+    ]).then(([duelsData, geoJsonData, embeddingsData]) => {
+      const processed = processDuels(duelsData, '608a7f9394d95300015224ac');
+      setDuels(processed);
+      setGeoJson(geoJsonData);
+      setEmbeddings(embeddingsData);
+      setIsLoading(false);
+
+    }).catch(error => {
+      console.error('Error fetching initial data:', error);
+      setIsLoading(false);
+    });
   }, []);
 
   useEffect(() => {

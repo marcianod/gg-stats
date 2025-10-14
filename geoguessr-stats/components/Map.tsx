@@ -111,7 +111,6 @@ function ChoroplethLayer({ geoJson, countryStats, onCountrySelect, selectedCount
 
 function HeatmapMarkers({ locations, onLocationClick, onLocationPin, activeLocation, pinnedLocations, performanceRange, similarRounds }: MapProps) {
   const map = useMap();
-  const [renderTrigger, setRenderTrigger] = useState(0);
   const isDragging = useRef(false);
 
   const zoomLevel = map.getZoom();
@@ -134,7 +133,6 @@ function HeatmapMarkers({ locations, onLocationClick, onLocationPin, activeLocat
       }
       animationFrameId = requestAnimationFrame(() => {
         map.invalidateSize();
-        setRenderTrigger(prev => prev + 1);
         animationFrameId = null;
       });
     };
@@ -240,7 +238,7 @@ function MapBounds({ roundData, selectedCountry, geoJson, locations }: { roundDa
     } else if (!roundData && !selectedCountry && !locations?.length) {
         map.setView([20, 0], 2);
     }
-  }, [map, selectedCountry, geoJson, roundData]);
+  }, [map, selectedCountry, geoJson, roundData, locations?.length]);
 
   return null;
 }
