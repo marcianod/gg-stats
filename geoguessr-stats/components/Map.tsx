@@ -112,7 +112,7 @@ function ChoroplethLayer({ geoJson, countryStats, onCountrySelect, selectedCount
 
 function HeatmapMarkers({ locations, onLocationClick, onLocationPin, onClearActive, activeLocation, pinnedLocations, performanceRange, similarRounds }: MapProps) {
   const map = useMap();
-  const [renderTrigger, setRenderTrigger] = useState(0);
+  const [, setRenderTrigger] = useState(0);
   const isDragging = useRef(false);
 
   const zoomLevel = map.getZoom();
@@ -219,7 +219,7 @@ function HeatmapMarkers({ locations, onLocationClick, onLocationPin, onClearActi
                   L.DomEvent.stop(e.originalEvent);
                 }
               },
-            } as any}
+            } as L.LeafletEventHandlerFnMap}
           />
         );
       })}
