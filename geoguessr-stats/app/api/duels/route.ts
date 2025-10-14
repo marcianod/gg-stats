@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 export async function GET() {
   try {
     const keys = await kv.keys('*');
-    const duelKeys = keys.filter(key => key !== 'lastSyncTimestamp');
+    const duelKeys = keys.filter(key => !key.startsWith('embedding:') && key !== 'lastSyncTimestamp');
 
     if (duelKeys.length === 0) {
       return NextResponse.json([]);
