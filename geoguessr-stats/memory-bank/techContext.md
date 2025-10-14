@@ -24,6 +24,11 @@ This project is a web application built with a modern JavaScript stack. The foll
 *   **React Leaflet:** React components for Leaflet maps.
 *   **GeoJSON:** A format for encoding a variety of geographic data structures.
 
+## Database:
+
+*   **MongoDB Atlas:** Used for storing and performing vector similarity searches on round embeddings.
+*   **Upstash KV:** A serverless Redis database used for storing duel/game metadata for fast access.
+
 ## Development Tools:
 
 *   **ESLint:** A pluggable and configurable linter tool for identifying and reporting on patterns in JavaScript.

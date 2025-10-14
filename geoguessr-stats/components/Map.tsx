@@ -3,7 +3,7 @@
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
-import { MapContainer, TileLayer, Marker, Polyline, useMap, GeoJSON, CircleMarker } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Polyline, useMap, GeoJSON, CircleMarker, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { useEffect, useRef, useState } from 'react';
 import { RoundData, CountryData, GeoJson, CountryProperties, VibeLocation } from '../lib/types';
@@ -40,6 +40,7 @@ export interface MapProps {
   locations?: VibeLocation[];
   onLocationClick?: (location: VibeLocation) => void;
   onLocationPin?: (location: VibeLocation) => void;
+  onClearActive?: () => void;
   cachedLocations?: VibeLocation[];
   activeLocation?: VibeLocation | null;
   pinnedLocations?: { lat: number; lng: number }[];
@@ -109,8 +110,9 @@ function ChoroplethLayer({ geoJson, countryStats, onCountrySelect, selectedCount
     return <GeoJSON ref={geoJsonLayer} data={geoJson as FeatureCollection<Geometry, CountryProperties>} style={style} onEachFeature={onEachFeature} />;
 }
 
-function HeatmapMarkers({ locations, onLocationClick, onLocationPin, activeLocation, pinnedLocations, performanceRange, similarRounds }: MapProps) {
+function HeatmapMarkers({ locations, onLocationClick, onLocationPin, onClearActive, activeLocation, pinnedLocations, performanceRange, similarRounds }: MapProps) {
   const map = useMap();
+  const [renderTrigger, setRenderTrigger] = useState(0);
   const isDragging = useRef(false);
 
   const zoomLevel = map.getZoom();
@@ -133,6 +135,7 @@ function HeatmapMarkers({ locations, onLocationClick, onLocationPin, activeLocat
       }
       animationFrameId = requestAnimationFrame(() => {
         map.invalidateSize();
+        setRenderTrigger(prev => prev + 1);
         animationFrameId = null;
       });
     };
@@ -173,7 +176,7 @@ function HeatmapMarkers({ locations, onLocationClick, onLocationPin, activeLocat
       return { radius: baseRadius + 2, color: '#800080', fillColor: '#800080', fillOpacity: 1.0, weight: 2, dashArray: '5, 5' };
     }
     if (isActive) {
-      return { radius: baseRadius + 4, color: '#000000', weight: 2.5, fillColor: color, fillOpacity: 1.0 };
+      return { radius: baseRadius + 15, color: '#000000', weight: 10, fillColor: color, fillOpacity: 1.0 };
     }
     if (isSimilaritySearchActive) {
       // When a search is active, this is the style for the faded out, non-similar rounds
@@ -199,14 +202,24 @@ function HeatmapMarkers({ locations, onLocationClick, onLocationPin, activeLocat
             radius={pathOptions.radius}
             pathOptions={pathOptions}
             eventHandlers={{
-              click: () => !isDragging.current && onLocationClick?.(loc),
-              contextmenu: (e) => {
-                if (!isDragging.current && onLocationPin) {
+              click: () => {
+                if (!isDragging.current) {
+                  onLocationClick?.(loc);
+                }
+              },
+              contextmenu: (e: L.LeafletMouseEvent) => { // Right-click on marker
+                if (!isDragging.current) {
+                  onClearActive?.();
+                  L.DomEvent.stop(e.originalEvent);
+                }
+              },
+              mousedown: (e: L.LeafletMouseEvent) => {
+                if (!isDragging.current && e.originalEvent.button === 1 && onLocationPin) { // 1 for middle-click
                   onLocationPin(loc);
                   L.DomEvent.stop(e.originalEvent);
                 }
               },
-            }}
+            } as any}
           />
         );
       })}
@@ -243,8 +256,18 @@ function MapBounds({ roundData, selectedCountry, geoJson, locations }: { roundDa
   return null;
 }
 
+function MapEvents({ onClearActive }: { onClearActive?: () => void }) {
+  useMapEvents({
+    contextmenu: (e) => {
+      onClearActive?.();
+      L.DomEvent.stop(e.originalEvent);
+    },
+  });
+  return null;
+}
+
 export default function Map(props: MapProps) {
-  const { roundData } = props;
+  const { roundData, onClearActive } = props;
 
   const handleMarkerClick = (url: string) => {
     window.open(url, '_blank');
@@ -267,7 +290,11 @@ export default function Map(props: MapProps) {
   }
 
   return (
-    <MapContainer center={[20, 0]} zoom={2} style={{ height: '100%', width: '100%', borderRadius: '0.5rem' }}>
+    <MapContainer 
+      center={[20, 0]} 
+      zoom={2} 
+      style={{ height: '100%', width: '100%', borderRadius: '0.5rem' }}
+    >
       <TileLayer
         url="https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&hl=en"
         attribution='&copy; <a href="https://www.google.com/maps">Google Maps</a>'
@@ -319,6 +346,7 @@ export default function Map(props: MapProps) {
       )}
       <HeatmapMarkers {...props} />
       <MapBounds roundData={props.roundData ?? null} selectedCountry={props.selectedCountry ?? null} geoJson={props.geoJson} locations={props.locations} />
+      <MapEvents onClearActive={onClearActive} />
     </MapContainer>
   )
 }

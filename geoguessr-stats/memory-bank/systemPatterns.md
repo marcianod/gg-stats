@@ -5,8 +5,10 @@ This application follows a modern, component-based architecture, leveraging the 
 ## High-Level Architecture:
 
 *   **Component-Based UI:** The user interface is built as a tree of reusable React components, promoting modularity and maintainability. Key components include `StatsDashboard`, `RecentMatchesTable`, `MatchRoundsTable`, `CountryStatsTable`, and `Map`.
-*   **Client-Side Data Fetching:** The application fetches the GeoGuessr statistics data (`geoguessr_stats.json` and `countries.geojson`) on the client-side using the `useEffect` hook. This approach is suitable for data that can be loaded after the initial page render.
-*   **In-Memory Data Processing:** Once the data is fetched, it is processed and transformed in memory using the `useMemo` hook. This optimizes performance by memoizing the results of expensive calculations and preventing unnecessary re-renders.
+*   **API-Driven Data Fetching:** The application fetches all GeoGuessr data from a set of dedicated Next.js API routes (e.g., `/api/duels`, `/api/embeddings`). These endpoints handle the communication with the backend databases.
+*   **Hybrid Data Storage:** The application utilizes a dual-database approach. Duel and game metadata are stored in an Upstash KV store for fast key-value access, while vector embeddings for similarity searches are stored and indexed in a MongoDB Atlas database, leveraging its specialized vector search capabilities.
+*   **Server-Side Data Processing:** Complex and performance-intensive operations, such as similarity searches on vector embeddings, are handled on the server-side within the API routes. This minimizes the computational load on the client and reduces the amount of data that needs to be transferred.
+*   **Client-Side State Management:** The client-side is responsible for fetching data from the APIs and managing the UI state using React hooks (`useState`, `useEffect`, `useMemo`). It performs lighter-weight data transformations and filtering needed to render the components.
 *   **State Management:** The application uses React's built-in state management hooks (`useState`, `useMemo`) to manage the application's state. This includes the duel data, UI state (like the active tab and selected items), and filters.
 
 ## Key Design Patterns:

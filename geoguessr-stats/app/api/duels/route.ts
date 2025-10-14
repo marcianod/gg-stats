@@ -1,14 +1,18 @@
 import { kv } from '@vercel/kv';
 import { NextResponse } from 'next/server';
 
+export const revalidate = 3600; // Revalidate every hour
+
 export async function GET() {
   try {
-    const keys: string[] = [];
-    for await (const key of kv.scanIterator()) {
-      keys.push(key);
+    const allKeys: string[] = [];
+    for await (const key of kv.scanIterator({ match: '*' })) {
+      allKeys.push(key);
     }
+    console.log(`[Duels API] Found ${allKeys.length} total keys. Sample keys:`, allKeys.slice(0, 10));
 
-    const duelKeys = keys.filter(key => !key.startsWith('embedding:') && key !== 'lastSyncTimestamp');
+    const duelKeys = allKeys.filter(key => !key.startsWith('embedding:') && key !== 'lastSyncTimestamp');
+    console.log(`[Duels API] Found ${duelKeys.length} duel keys after filtering.`);
 
     if (duelKeys.length === 0) {
       return NextResponse.json([]);

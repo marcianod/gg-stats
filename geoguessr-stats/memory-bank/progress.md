@@ -100,3 +100,11 @@
 *   [x] Implemented a popover to house the date slider and presets.
 *   [x] Integrated the new `DateRangePopover` into the "Vibe" page and the main dashboard.
 *   [x] Ensured the date filter correctly filters the data on the main dashboard.
+
+### Vibe Page Map Interaction Fixes
+
+*   [x] Re-implemented middle-click to pin a location using the `mousedown` event for better reliability.
+*   [x] Re-purposed right-click on a marker to clear the active selection.
+*   [x] Enhanced the 'Escape' key to clear all pinned windows.
+*   [x] Added debugging logs to trace click events and confirmed the fix.
+*   [x] Cleaned up debugging logs from the map component.

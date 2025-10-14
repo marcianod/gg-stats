@@ -5,11 +5,12 @@ import { GeoJson, CountryData, VibeLocation, ProcessedDuel } from '@/lib/types';
 import dynamic from 'next/dynamic';
 import { Rnd } from 'react-rnd';
 import { processDuels } from '@/lib/utils';
-import { findSimilarRounds } from '@/lib/similarity';
 import { Lock, Unlock } from 'lucide-react';
 import { DateRangePopover } from '@/components/ui/date-range-popover';
 import { DateRange } from 'react-day-picker';
 import { Button } from '@/components/ui/button';
+import { useDebounce } from 'use-debounce';
+import { SimilaritySlider } from '@/components/ui/similarity-slider';
 
 const Map = dynamic(() => import('@/components/Map'), { ssr: false });
 
@@ -28,7 +29,6 @@ interface HistoryState {
 export default function VibePage() {
   const [duels, setDuels] = useState<ProcessedDuel[]>([]);
   const [geoJson, setGeoJson] = useState<GeoJson | null>(null);
-  const [embeddings, setEmbeddings] = useState<{ [roundId: string]: number[] }>({});
   const [activeLocation, setActiveLocation] = useState<VibeLocation | null>(null);
   const [cachedLocations, setCachedLocations] = useState<VibeLocation[]>([]);
   const [pinnedLocations, setPinnedLocations] = useState<PinnedLocation[]>([]);
@@ -41,6 +41,8 @@ export default function VibePage() {
   const [isLocked, setIsLocked] = useState(false);
   const [similarRounds, setSimilarRounds] = useState<string[]>([]);
   const [isSimilarityModeOn, setIsSimilarityModeOn] = useState(false);
+  const [similarityThreshold, setSimilarityThreshold] = useState(0.90);
+  const [debouncedThreshold] = useDebounce(similarityThreshold, 200);
   const [dateRange, setDateRange] = useState<DateRange | undefined>({ from: new Date(new Date().setDate(new Date().getDate() - 30)), to: new Date() });
   const [colorMode, setColorMode] = useState<'absolute' | 'delta' | 'impact'>('delta');
   const [isLoading, setIsLoading] = useState(true);
@@ -67,15 +69,14 @@ export default function VibePage() {
     }
     Promise.all([
       fetch('/api/duels').then(res => res.json()),
-      fetch('/data/countries.geojson').then(res => res.json()),
-      fetch('/api/embeddings').then(res => res.json())
-    ]).then(([duelsData, geoJsonData, embeddingsData]) => {
+      fetch('/data/countries.geojson').then(res => res.json())
+    ]).then(([duelsData, geoJsonData]) => {
+      console.log(`[Vibe Page] Initial data fetched:`);
+      console.log(`  - Duels: ${duelsData.length}`);
       const processed = processDuels(duelsData, '608a7f9394d95300015224ac');
       setDuels(processed);
       setGeoJson(geoJsonData);
-      setEmbeddings(embeddingsData);
       setIsLoading(false);
-
     }).catch(error => {
       console.error('Error fetching initial data:', error);
       setIsLoading(false);
@@ -186,7 +187,10 @@ export default function VibePage() {
     recordHistory();
     setSimilarRounds([]); // Clear previous similar rounds
     if (isSimilarityModeOn) {
+      console.log('[Vibe Page] Similarity mode is ON. Calling handleFindSimilar...');
       handleFindSimilar(location.round);
+    } else {
+      console.log('[Vibe Page] Similarity mode is OFF. Not calling handleFindSimilar.');
     }
     const newZIndex = topZIndex + 1;
     setTopZIndex(newZIndex);
@@ -203,11 +207,22 @@ export default function VibePage() {
     }
   };
 
-  const handleFindSimilar = (round: VibeLocation['round']) => {
+  const handleFindSimilar = useCallback(async (round: VibeLocation['round']) => {
     const roundId = `${round.duelId}_${round.roundNumber}`;
-    const similar = findSimilarRounds(roundId, embeddings, 10);
-    setSimilarRounds(similar);
-  };
+    console.log(`[Vibe Page] Finding similar rounds for roundId: ${roundId} with threshold: ${debouncedThreshold}`);
+    try {
+      const response = await fetch(`/api/similar-rounds/${roundId}?threshold=${debouncedThreshold}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch similar rounds');
+      }
+      const similar = await response.json();
+      console.log(`[Vibe Page] Found ${similar.length} similar rounds:`, similar);
+      setSimilarRounds(similar);
+    } catch (error) {
+      console.error('Error finding similar rounds:', error);
+      setSimilarRounds([]);
+    }
+  }, [debouncedThreshold]);
 
   const handleLocationPin = (location: VibeLocation) => {
     recordHistory();
@@ -219,10 +234,30 @@ export default function VibePage() {
       if (prev.length < PIN_LIMIT) {
         const newZIndex = topZIndex + 1;
         setTopZIndex(newZIndex);
+
+        // New grid positioning logic
+        const windowWidth = 800;
+        const windowHeight = 600;
+        const margin = 20;
+        const startX = 50;
+        const startY = 50;
+        const containerWidth = window.innerWidth - 100; // Adjust for padding
+
+        const numColumns = Math.floor((containerWidth - startX + margin) / (windowWidth + margin));
+        const newIndex = prev.length;
+        
+        const col = newIndex % numColumns;
+        const row = Math.floor(newIndex / numColumns);
+
+        const newPosition = {
+          x: startX + col * (windowWidth + margin),
+          y: startY + row * (windowHeight + margin),
+        };
+
         return [...prev, {
           ...location,
-          size: { width: 400, height: 300 },
-          position: { x: 50 + prev.length * 20, y: 50 + prev.length * 20 },
+          size: { width: windowWidth, height: windowHeight },
+          position: newPosition,
           isLocked: false,
           zIndex: newZIndex,
         }];
@@ -287,7 +322,9 @@ export default function VibePage() {
       }
 
       if (e.key === 'Escape') {
+        recordHistory();
         setActiveLocation(null);
+        setPinnedLocations([]);
         setSimilarRounds([]);
       }
     };
@@ -297,6 +334,17 @@ export default function VibePage() {
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [history, historyIndex, recordHistory]);
+
+  useEffect(() => {
+    if (activeLocation && isSimilarityModeOn) {
+      handleFindSimilar(activeLocation.round);
+    }
+  }, [debouncedThreshold, activeLocation, isSimilarityModeOn, handleFindSimilar]);
+
+  const handleClearActive = () => {
+    setActiveLocation(null);
+    setSimilarRounds([]);
+  };
 
   return (
     <div className="h-full w-full relative p-4">
@@ -310,11 +358,20 @@ export default function VibePage() {
           <Button
             variant={isSimilarityModeOn ? 'secondary' : 'ghost'}
             size="sm"
-            onClick={() => setIsSimilarityModeOn(!isSimilarityModeOn)}
+            onClick={() => {
+              console.log(`[Vibe Page] 'Auto Vibe Check' button clicked. New mode: ${!isSimilarityModeOn}`);
+              setIsSimilarityModeOn(!isSimilarityModeOn);
+            }}
           >
             Auto Vibe Check
           </Button>
         </div>
+        {isSimilarityModeOn && (
+          <SimilaritySlider
+            value={similarityThreshold}
+            onChange={setSimilarityThreshold}
+          />
+        )}
         <div className="flex items-center gap-2 bg-white p-1 rounded-md shadow-md">
           <Button
             variant={colorMode === 'delta' ? 'secondary' : 'ghost'}
@@ -347,6 +404,7 @@ export default function VibePage() {
           countryStats={countryStats}
           onLocationClick={handleLocationClick}
           onLocationPin={handleLocationPin}
+          onClearActive={handleClearActive}
           cachedLocations={cachedLocations}
           activeLocation={activeLocation}
           pinnedLocations={pinnedLocations}
