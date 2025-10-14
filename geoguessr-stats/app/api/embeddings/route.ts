@@ -3,26 +3,30 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    let cursor = 0;
     const keys: string[] = [];
-    do {
-      const [nextCursor, scannedKeys] = await kv.scan(cursor, { match: 'embedding:*' });
-      keys.push(...scannedKeys);
-      cursor = Number(nextCursor);
-    } while (cursor !== 0);
+    for await (const key of kv.scanIterator({ match: 'embedding:*' })) {
+      keys.push(key);
+    }
 
     if (keys.length === 0) {
       return NextResponse.json({});
     }
 
-    const embeddings = await kv.mget(...keys);
-    
-    const embeddingsObject = keys.reduce((acc, key, index) => {
-      const roundId = key.replace('embedding:', '');
-      acc[roundId] = embeddings[index] as number[];
-      return acc;
-    }, {} as { [key: string]: number[] });
+    const embeddingsObject: { [key: string]: number[] } = {};
+    const chunkSize = 500;
 
+    for (let i = 0; i < keys.length; i += chunkSize) {
+      const chunkKeys = keys.slice(i, i + chunkSize);
+      const chunkEmbeddings = await kv.mget<number[][]>(...chunkKeys);
+
+      chunkKeys.forEach((key, index) => {
+        const roundId = key.replace('embedding:', '');
+        if (chunkEmbeddings[index]) {
+          embeddingsObject[roundId] = chunkEmbeddings[index];
+        }
+      });
+    }
+    
     return NextResponse.json(embeddingsObject);
   } catch (error) {
     console.error('Failed to fetch embeddings:', error);
