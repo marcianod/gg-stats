@@ -1,6 +1,5 @@
-import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
-import { Duel } from '@/lib/types';
+import { Duel, Round } from '@/lib/types';
 import { PredictionServiceClient, helpers } from '@google-cloud/aiplatform';
 
 // --- Environment Variables ---
@@ -81,19 +80,15 @@ async function generateEmbedding(imageBuffer: Buffer): Promise<number[]> {
   return imageEmbedding;
 }
 
-// --- API Route Handler ---
-export async function POST(request: Request) {
+// --- Main Processor Function ---
+export async function processEmbeddingsForDuels(duels: Duel[]) {
+  if (duels.length === 0) {
+    return;
+  }
+
+  console.log(`[Embedding Processor] Starting to process embeddings for ${duels.length} duel(s).`);
+
   try {
-    const duels: Duel[] = await request.json();
-
-    if (!Array.isArray(duels)) {
-      return NextResponse.json({ error: 'Invalid request body, expected an array of duels.' }, { status: 400 });
-    }
-
-    if (duels.length === 0) {
-      return NextResponse.json({ status: 'success', processedCount: 0 });
-    }
-
     const client = await connectToDatabase();
     const db = client.db(DB_NAME);
     const collection = db.collection<EmbeddingDocument>(COLLECTION_NAME);
@@ -104,7 +99,7 @@ export async function POST(request: Request) {
       if (!duel.rounds || duel.rounds.length === 0) continue;
 
       for (let i = 0; i < duel.rounds.length; i++) {
-        const round = duel.rounds[i];
+        const round = duel.rounds[i] as Round;
         const roundId = `${duel.gameId}_${i + 1}`;
 
         const existingDoc = await collection.findOne({ _id: roundId });
@@ -113,11 +108,11 @@ export async function POST(request: Request) {
         }
 
         if (!round.panorama || typeof round.panorama.heading === 'undefined' || typeof round.panorama.lat === 'undefined' || typeof round.panorama.lng === 'undefined') {
-          console.warn(`[Embeddings API] Skipping round ${roundId} due to missing panorama data.`);
+          console.warn(`[Embedding Processor] Skipping round ${roundId} due to missing panorama data.`);
           continue;
         }
 
-        console.log(`[Embeddings API] Processing new round: ${roundId}`);
+        console.log(`[Embedding Processor] Processing new round: ${roundId}`);
         
         try {
           const imageBuffer = await fetchStreetViewImage(
@@ -137,16 +132,13 @@ export async function POST(request: Request) {
 
           roundsProcessed++;
         } catch (error) {
-          console.error(`[Embeddings API] Skipping round ${roundId} due to an error:`, error);
+          console.error(`[Embedding Processor] Skipping round ${roundId} due to an error:`, error);
         }
       }
     }
 
-    console.log(`[Embeddings API] Successfully generated and saved embeddings for ${roundsProcessed} new rounds.`);
-    return NextResponse.json({ status: 'success', processedCount: roundsProcessed });
-
+    console.log(`[Embedding Processor] Successfully generated and saved embeddings for ${roundsProcessed} new rounds.`);
   } catch (error) {
-    console.error('[Embeddings API] Error:', error);
-    return NextResponse.json({ error: 'Failed to process embeddings.' }, { status: 500 });
+    console.error('[Embedding Processor] A critical error occurred:', error);
   }
 }

@@ -1,6 +1,7 @@
 import { kv } from '@vercel/kv';
 import { NextResponse } from 'next/server';
 import { type Duel } from '@/lib/types';
+import { processEmbeddingsForDuels } from '@/lib/embedding-processor';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': 'https://www.geoguessr.com',
@@ -32,30 +33,8 @@ export async function POST(request: Request) {
 
     await pipeline.exec();
 
-    // Determine the base URL for the internal API call
-    const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
-    console.log(`[Sync API] Determined base URL: ${baseUrl}`);
-
-    // Fire-and-forget request to the embeddings API
-    console.log('[Sync API] Attempting to trigger embedding generation...');
-    fetch(`${baseUrl}/api/embeddings`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(duels),
-    })
-    .then(response => {
-        if (!response.ok) {
-            console.error(`[Sync API] Embedding trigger failed with status: ${response.status} ${response.statusText}`);
-        } else {
-            console.log('[Sync API] Successfully triggered embedding generation.');
-        }
-    })
-    .catch(error => {
-      // Log the error but don't block the response to the user
-      console.error('[Sync API] Failed to trigger embedding generation:', error);
-    });
+    // Asynchronously process embeddings without blocking the response
+    processEmbeddingsForDuels(duels);
 
     return NextResponse.json({ status: 'success', addedCount: duels.length }, { headers: CORS_HEADERS });
   } catch (error) {
