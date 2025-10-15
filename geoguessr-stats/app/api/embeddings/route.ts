@@ -4,7 +4,7 @@ import { Duel } from '@/lib/types';
 import { PredictionServiceClient, helpers } from '@google-cloud/aiplatform';
 
 // --- Environment Variables ---
-const GOOGLE_API_KEY = process.env.GOOGLE_STREET_VIEW_API_KEY;
+const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 const VERTEX_PROJECT_ID = process.env.VERTEX_AI_PROJECT_ID;
 const DB_NAME = 'gg-vector-db';
 const COLLECTION_NAME = 'gg-vector-db-collection';

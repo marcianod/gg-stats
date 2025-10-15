@@ -32,8 +32,11 @@ export async function POST(request: Request) {
 
     await pipeline.exec();
 
+    // Determine the base URL for the internal API call
+    const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
+
     // Fire-and-forget request to the embeddings API
-    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/embeddings`, {
+    fetch(`${baseUrl}/api/embeddings`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
