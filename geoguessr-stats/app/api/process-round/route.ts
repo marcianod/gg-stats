@@ -16,8 +16,18 @@ interface EmbeddingDocument {
 }
 
 // --- Google Cloud AI Platform Client ---
+// Check for Google Cloud credentials
+if (!process.env.GCP_PROJECT_ID || !process.env.GCP_CLIENT_EMAIL || !process.env.GCP_PRIVATE_KEY) {
+  throw new Error("Google Cloud credentials are not set in the environment variables.");
+}
+
 const clientOptions = {
   apiEndpoint: 'us-central1-aiplatform.googleapis.com',
+  credentials: {
+    client_email: process.env.GCP_CLIENT_EMAIL,
+    private_key: process.env.GCP_PRIVATE_KEY.replace(/\\n/g, '\n'), // Vercel escapes newlines
+  },
+  projectId: process.env.GCP_PROJECT_ID,
 };
 const predictionServiceClient = new PredictionServiceClient(clientOptions);
 
