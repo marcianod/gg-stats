@@ -42,27 +42,46 @@
 
         const result = await Swal.fire({
             title: 'Sync Duel Stats',
-            text: `Click "Start Sync" to find new duels. "Force Full Resync" will fetch up to ${MAX_PAGES_TO_FETCH} pages of your history.`,
+            text: 'Choose a sync method.',
             icon: 'info',
             showDenyButton: true,
-            confirmButtonText: 'Start Sync',
-            denyButtonText: 'Force Full Resync',
+            showCancelButton: true,
+            confirmButtonText: 'Start Sync (New)',
+            denyButtonText: 'Sync Recent Days',
+            cancelButtonText: 'Force Full Resync',
             allowOutsideClick: false
         });
 
         if (result.isConfirmed) {
-            performSync(false); // Standard sync
+            performSync({ mode: 'standard' });
         } else if (result.isDenied) {
+            const { value: days } = await Swal.fire({
+                title: 'Sync Recent Days',
+                input: 'number',
+                inputLabel: 'How many days of history do you want to sync?',
+                inputValue: 1,
+                inputAttributes: {
+                    min: '1',
+                    step: '1'
+                },
+                showCancelButton: true,
+                confirmButtonText: 'Start Sync'
+            });
+
+            if (days) {
+                performSync({ mode: 'dateRange', days: parseInt(days) });
+            }
+        } else if (result.dismiss === Swal.DismissReason.cancel) {
             const confirmResult = await Swal.fire({
                 title: 'Are you sure?',
-                text: 'This will fetch a large amount of history and may take a while.',
+                text: `This will fetch up to ${MAX_PAGES_TO_FETCH} pages of your history and may take a while.`,
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonText: 'Yes, do a full resync!',
                 cancelButtonText: 'Cancel'
             });
             if (confirmResult.isConfirmed) {
-                performSync(true); // Forced full resync
+                performSync({ mode: 'full' });
             }
         }
     }
@@ -88,17 +107,26 @@
         });
     }
 
-    async function performSync(forceResync = false) {
-        Swal.fire({ title: 'Syncing...', text: 'Checking server for last sync date...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    async function performSync(options) {
+        Swal.fire({ title: 'Syncing...', text: 'Initializing...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
         try {
-            let lastSyncTimestamp = 0;
-            if (!forceResync) {
-                lastSyncTimestamp = await getLastSyncTimestampFromServer();
-                const lastSyncDate = new Date(lastSyncTimestamp);
+            let syncThreshold = 0; // Will be a timestamp
+            const now = Date.now();
+
+            if (options.mode === 'standard') {
+                Swal.update({ text: 'Checking server for last sync date...' });
+                syncThreshold = await getLastSyncTimestampFromServer();
+                const lastSyncDate = new Date(syncThreshold);
                 console.log(`Server's last sync date is ${lastSyncDate.toLocaleString()}. Fetching duels newer than this.`);
                 Swal.update({ text: `Last sync: ${lastSyncDate.toLocaleString()}. Looking for newer games...` });
-            } else {
+            } else if (options.mode === 'dateRange') {
+                const daysInMs = options.days * 24 * 60 * 60 * 1000;
+                syncThreshold = now - daysInMs;
+                const syncFromDate = new Date(syncThreshold);
+                console.log(`Date Range sync initiated. Fetching duels from the last ${options.days} day(s), since ${syncFromDate.toLocaleString()}.`);
+                Swal.update({ text: `Fetching duels from the last ${options.days} day(s)...` });
+            } else { // full resync
                 console.log('Force Full Resync initiated. Fetching all available history.');
                 Swal.update({ text: 'Force Full Resync initiated. Fetching all available history.' });
             }
@@ -142,10 +170,12 @@
                     Swal.update({ text: `Scanning Page ${page} (Games from ~${dateString})...` });
 
                     for (const entry of feed.entries) {
-                        if (new Date(entry.created).getTime() <= lastSyncTimestamp) {
-                            console.log(`Found a game older than the last sync. Stopping search at page ${page}.`);
-                            keepFetching = false;
-                            break;
+                        if (new Date(entry.created).getTime() <= syncThreshold) {
+                            if (options.mode !== 'full') { // Don't stop for full resync
+                                console.log(`Found a game older than the sync threshold. Stopping search at page ${page}.`);
+                                keepFetching = false;
+                                break;
+                            }
                         }
                         try {
                             const payloadData = JSON.parse(entry.payload);
