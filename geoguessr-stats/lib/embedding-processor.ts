@@ -115,6 +115,7 @@ export async function processEmbeddingsForDuels(duels: Duel[]) {
         console.log(`[Embedding Processor] Processing new round: ${roundId}`);
         
         try {
+          console.log(`[Embedding Processor]   - Fetching Street View image for ${roundId}...`);
           const imageBuffer = await fetchStreetViewImage(
             round.panorama.lat,
             round.panorama.lng,
@@ -123,14 +124,17 @@ export async function processEmbeddingsForDuels(duels: Duel[]) {
             round.panorama.zoom ?? 0
           );
 
+          console.log(`[Embedding Processor]   - Generating embedding for ${roundId}...`);
           const embedding = await generateEmbedding(imageBuffer);
           
+          console.log(`[Embedding Processor]   - Saving embedding for ${roundId} to MongoDB...`);
           await collection.insertOne({
             _id: roundId,
             embedding: embedding,
           });
 
           roundsProcessed++;
+          console.log(`[Embedding Processor]   - Successfully processed ${roundId}.`);
         } catch (error) {
           console.error(`[Embedding Processor] Skipping round ${roundId} due to an error:`, error);
         }
