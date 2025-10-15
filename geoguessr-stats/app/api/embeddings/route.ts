@@ -64,14 +64,21 @@ async function generateEmbedding(imageBuffer: Buffer): Promise<number[]> {
     throw new Error('Failed to get a prediction from the Vertex AI API.');
   }
 
-  const prediction = response.predictions[0] as any;
-  const imageEmbedding = prediction.structValue?.fields?.imageEmbedding?.listValue?.values;
+  const predictionValue = response.predictions[0];
 
-  if (!imageEmbedding) {
+  if (!predictionValue.structValue?.fields?.imageEmbedding?.listValue?.values) {
+    throw new Error('API response did not contain a valid image embedding structure.');
+  }
+
+  const embeddingList = predictionValue.structValue.fields.imageEmbedding.listValue.values;
+  
+  const imageEmbedding = embeddingList.map(v => v.numberValue).filter((n): n is number => n !== null && n !== undefined);
+
+  if (imageEmbedding.length === 0) {
     throw new Error('API response did not contain a valid image embedding.');
   }
 
-  return imageEmbedding.map((v: any) => v.numberValue);
+  return imageEmbedding;
 }
 
 // --- API Route Handler ---
@@ -97,7 +104,7 @@ export async function POST(request: Request) {
       if (!duel.rounds || duel.rounds.length === 0) continue;
 
       for (let i = 0; i < duel.rounds.length; i++) {
-        const round = duel.rounds[i] as any;
+        const round = duel.rounds[i];
         const roundId = `${duel.gameId}_${i + 1}`;
 
         const existingDoc = await collection.findOne({ _id: roundId });
