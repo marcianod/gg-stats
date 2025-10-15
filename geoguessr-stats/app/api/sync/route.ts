@@ -32,6 +32,18 @@ export async function POST(request: Request) {
 
     await pipeline.exec();
 
+    // Fire-and-forget request to the embeddings API
+    fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/embeddings`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(duels),
+    }).catch(error => {
+      // Log the error but don't block the response to the user
+      console.error('Failed to trigger embedding generation:', error);
+    });
+
     return NextResponse.json({ status: 'success', addedCount: duels.length }, { headers: CORS_HEADERS });
   } catch (error) {
     console.error('Error syncing duels:', error);

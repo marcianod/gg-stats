@@ -1,26 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { MongoClient } from 'mongodb';
+import { connectToDatabase } from '@/lib/mongodb';
 
-const MONGODB_URI = process.env.MONGODB_URI;
 const DB_NAME = 'gg-vector-db';
 const COLLECTION_NAME = 'gg-vector-db-collection';
-
-if (!MONGODB_URI) {
-  throw new Error("MONGODB_URI environment variable must be set.");
-}
-
-// Cache the MongoDB client connection
-let cachedClient: MongoClient | null = null;
-
-async function connectToDatabase() {
-  if (cachedClient) {
-    return cachedClient;
-  }
-  const client = new MongoClient(MONGODB_URI!);
-  await client.connect();
-  cachedClient = client;
-  return client;
-}
 
 interface EmbeddingDocument {
     _id: string;
