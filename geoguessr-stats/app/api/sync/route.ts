@@ -2,8 +2,6 @@ import { kv } from '@vercel/kv';
 import { NextResponse } from 'next/server';
 import { type Duel } from '@/lib/types';
 
-const QUEUE_KEY = 'embedding-queue';
-
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': 'https://www.geoguessr.com',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -42,14 +40,13 @@ export async function POST(request: Request) {
       }
     });
 
-    if (newRoundIds.length > 0) {
-      await kv.rpush(QUEUE_KEY, ...newRoundIds);
-      console.log(`[Sync API] Added ${newRoundIds.length} new round(s) to the embedding queue.`);
-    }
-
     await pipeline.exec();
 
-    return NextResponse.json({ status: 'success', addedCount: duels.length, queuedRounds: newRoundIds.length }, { headers: CORS_HEADERS });
+    return NextResponse.json({
+      status: 'success',
+      addedCount: duels.length,
+      roundsToProcess: newRoundIds
+    }, { headers: CORS_HEADERS });
   } catch (error) {
     console.error('Error syncing duels:', error);
     return NextResponse.json({ error: 'Failed to sync duels.' }, { status: 500, headers: CORS_HEADERS });

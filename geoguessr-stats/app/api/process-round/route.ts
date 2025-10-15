@@ -9,8 +9,6 @@ const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 const VERTEX_PROJECT_ID = process.env.VERTEX_AI_PROJECT_ID;
 const DB_NAME = 'gg-vector-db';
 const COLLECTION_NAME = 'gg-vector-db-collection';
-const QUEUE_KEY = 'embedding-queue';
-
 // --- Type Definitions ---
 interface EmbeddingDocument {
     _id: string;
@@ -61,26 +59,23 @@ async function generateEmbedding(imageBuffer: Buffer): Promise<number[]> {
   return imageEmbedding;
 }
 
+// --- CORS Headers ---
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': 'https://www.geoguessr.com',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
 // --- API Route Handler ---
-export async function GET(request: Request) {
-  // Secure this endpoint to be called only by Vercel Cron
-  const authHeader = request.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return new Response('Unauthorized', { status: 401 });
-  }
-
-  console.log('[Worker] Cron job triggered. Processing one round from the queue.');
-
-  let roundId: string | null = null;
+export async function POST(request: Request) {
   try {
-    roundId = await kv.lpop<string>(QUEUE_KEY);
+    const { roundId } = await request.json();
 
-    if (!roundId) {
-      console.log('[Worker] Queue is empty. Nothing to process.');
-      return NextResponse.json({ status: 'success', message: 'Queue is empty.' });
+    if (!roundId || typeof roundId !== 'string') {
+      return NextResponse.json({ error: 'Invalid request body, expected a roundId.' }, { status: 400, headers: CORS_HEADERS });
     }
 
-    console.log(`[Worker] Processing round: ${roundId}`);
+    console.log(`[Process-Round] Processing round: ${roundId}`);
 
     const client = await connectToDatabase();
     const db = client.db(DB_NAME);
@@ -88,8 +83,8 @@ export async function GET(request: Request) {
 
     const existingDoc = await collection.findOne({ _id: roundId });
     if (existingDoc) {
-      console.log(`[Worker] Embedding for ${roundId} already exists. Skipping.`);
-      return NextResponse.json({ status: 'success', message: `Skipped ${roundId}, already exists.` });
+      console.log(`[Process-Round] Embedding for ${roundId} already exists. Skipping.`);
+      return NextResponse.json({ status: 'success', message: `Skipped ${roundId}, already exists.` }, { headers: CORS_HEADERS });
     }
 
     const [gameId, roundIndexStr] = roundId.split('_');
@@ -103,24 +98,26 @@ export async function GET(request: Request) {
     const round = duel.rounds[roundIndex] as Round;
 
     if (!round.panorama || typeof round.panorama.heading === 'undefined' || typeof round.panorama.lat === 'undefined' || typeof round.panorama.lng === 'undefined') {
-      console.warn(`[Worker] Skipping round ${roundId} due to missing panorama data.`);
-      return NextResponse.json({ status: 'success', message: `Skipped ${roundId}, missing data.` });
+      console.warn(`[Process-Round] Skipping round ${roundId} due to missing panorama data.`);
+      return NextResponse.json({ status: 'success', message: `Skipped ${roundId}, missing data.` }, { headers: CORS_HEADERS });
     }
 
     const imageBuffer = await fetchStreetViewImage(round.panorama.lat, round.panorama.lng, round.panorama.heading, round.panorama.pitch ?? 0, round.panorama.zoom ?? 0);
     const embedding = await generateEmbedding(imageBuffer);
     await collection.insertOne({ _id: roundId, embedding: embedding });
 
-    console.log(`[Worker] Successfully processed and saved embedding for ${roundId}.`);
-    return NextResponse.json({ status: 'success', processed: roundId });
+    console.log(`[Process-Round] Successfully processed and saved embedding for ${roundId}.`);
+    return NextResponse.json({ status: 'success', processed: roundId }, { headers: CORS_HEADERS });
 
   } catch (error) {
-    console.error('[Worker] A critical error occurred:', error);
-    // If a roundId was pulled, push it back to the queue for a retry
-    if (roundId) {
-      await kv.rpush(QUEUE_KEY, roundId);
-      console.log(`[Worker] Pushed failed round ${roundId} back to the queue.`);
-    }
-    return new Response('Internal Server Error', { status: 500 });
+    console.error('[Process-Round] A critical error occurred:', error);
+    return NextResponse.json({ error: 'Failed to process round.' }, { status: 500, headers: CORS_HEADERS });
   }
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: CORS_HEADERS,
+  });
 }
