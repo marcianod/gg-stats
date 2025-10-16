@@ -161,10 +161,7 @@
             let roundsToProcessCount = 0;
 
             while (keepFetching) {
-                for (let i = 0; i < BATCH_SIZE_PAGES; i++) {
-                    if (!keepFetching) break;
-
-                    if (page >= MAX_PAGES_TO_FETCH) {
+                if (page >= MAX_PAGES_TO_FETCH) {
                         console.log(`Reached max page limit of ${MAX_PAGES_TO_FETCH}.`);
                         keepFetching = false;
                         break;
@@ -180,10 +177,10 @@
                         break;
                     }
 
-                    const firstEntry = feed.entries[0];
+                    const lastEntry = feed.entries[feed.entries.length - 1];
                     let dateString = 'an older date';
-                    if (firstEntry && firstEntry.created) {
-                        const d = new Date(firstEntry.created);
+                    if (lastEntry && lastEntry.created) {
+                        const d = new Date(lastEntry.created);
                         if (!isNaN(d)) {
                             dateString = d.toLocaleDateString();
                         }
@@ -213,7 +210,7 @@
                     }
                     page++;
                     await sleep(100);
-                }
+                
             }
 
             if (allNewDuelGameData.size > 0) {
@@ -251,16 +248,18 @@
 
                     // Calculate stats from the duels that were actually added
                     const addedDuelIds = new Set((res.roundsToProcess || []).map(r => r.split('_')[0]));
-                    const addedDuels = allDuelData.filter(d => addedDuelIds.has(d.gameId));
 
                     allDuelData.forEach(duel => {
-                        const date = new Date(duel.created).toLocaleDateString();
-                        if (!statsByDay[date]) {
-                            statsByDay[date] = { duels: 0, locations: 0 };
+                        const date = new Date(duel.created);
+                        if (isNaN(date.getTime())) return; // Skip if the date is invalid
+
+                        const dateKey = date.toISOString().split('T')[0]; // Use YYYY-MM-DD for reliable key
+                        if (!statsByDay[dateKey]) {
+                            statsByDay[dateKey] = { duels: 0, locations: 0 };
                         }
-                        statsByDay[date].duels++;
+                        statsByDay[dateKey].duels++;
                         if(addedDuelIds.has(duel.gameId)) {
-                           statsByDay[date].locations += duel.rounds?.length || 0;
+                           statsByDay[dateKey].locations += duel.rounds?.length || 0;
                         }
                         totalRoundsInBatch += duel.rounds?.length || 0;
                     });
@@ -275,10 +274,15 @@
             const skippedLocations = totalRoundsInBatch - roundsToProcessCount;
             let summaryHtml = `<p style="margin-bottom: 1em;"><b>Added ${totalAdded} new duel(s).</b></p>`;
 
-            if (Object.keys(statsByDay).length > 0) {
+            const summaryEntries = Object.entries(statsByDay);
+            if (summaryEntries.length > 0) {
                 summaryHtml += '<div style="text-align: left; max-height: 150px; overflow-y: auto; padding: .5em; background-color: #f7fafc; border-radius: 5px;">';
-                for (const [date, stats] of Object.entries(statsByDay).sort((a, b) => new Date(b[0]) - new Date(a[0]))) {
-                     summaryHtml += `<b>${date}:</b> Synced ${stats.duels} duels (${stats.locations} locations)<br>`;
+                // Sort by date descending
+                summaryEntries.sort((a, b) => new Date(b[0]).getTime() - new Date(a[0]).getTime());
+
+                for (const [date, stats] of summaryEntries) {
+                     const displayDate = new Date(date).toLocaleDateString();
+                     summaryHtml += `<b>${displayDate}:</b> Found ${stats.duels} duels (${stats.locations} new locations)<br>`;
                 }
                 summaryHtml += '</div>';
             }
