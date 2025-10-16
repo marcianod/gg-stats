@@ -1,8 +1,6 @@
 import { kv } from '@vercel/kv';
 import { NextResponse } from 'next/server';
 
-export const revalidate = 3600; // Revalidate every hour
-
 export async function GET() {
   try {
     const allKeys: string[] = [];
