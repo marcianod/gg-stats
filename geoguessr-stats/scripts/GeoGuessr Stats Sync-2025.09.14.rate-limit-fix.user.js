@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GeoGuessr Stats Sync
 // @namespace    http://tampermonkey.net/
-// @version      2025.09.14.rate-limit-fix
+// @version      2025.09.15.final-fix
 // @description  Adds a button to your GeoGuessr profile to sync duel stats to your web app.
 // @author       You
 // @match        https://www.geoguessr.com/user/*
@@ -19,23 +19,18 @@
     const syncApiUrl = `${baseUrl}/api/sync`;
     const processRoundApiUrl = `${baseUrl}/api/process-round`;
     const lastSyncApiUrl = `${baseUrl}/api/last-sync`;
-    const MAX_PAGES_TO_FETCH = 200; // Stops a full resync after this many pages
-    const DUEL_FETCH_BATCH_SIZE = 10;
+    const MAX_PAGES_TO_FETCH = 200;
+    const DUEL_FETCH_BATCH_SIZE = 25; // Match the feed size
     const DUEL_FETCH_DELAY_MS = 1000;
 
     function addSyncButton() {
         const actionsContainer = document.querySelector('[class^="profile-header_actions__"]');
         if (!actionsContainer || document.getElementById('stats-sync-button')) return;
 
-        // Inject custom styles for the modal
         const style = document.createElement('style');
         style.innerHTML = `
-            .swal2-deny.swal2-styled.swal2-styled {
-                background-color: #4a5568 !important; /* A neutral gray */
-            }
-            .swal2-cancel.swal2-styled.swal2-styled {
-                 background-color: #c53030 !important; /* A cautionary red */
-            }
+            .swal2-deny.swal2-styled.swal2-styled { background-color: #4a5568 !important; }
+            .swal2-cancel.swal2-styled.swal2-styled { background-color: #c53030 !important; }
         `;
         document.head.appendChild(style);
 
@@ -49,20 +44,16 @@
     }
 
     async function syncAllDuelStats() {
-        if (typeof Swal === 'undefined') {
-            return alert('Sync library is not ready. Please try again.');
-        }
+        if (typeof Swal === 'undefined') return alert('Sync library is not ready. Please try again.');
 
         const result = await Swal.fire({
             title: 'Sync Duel Stats',
-            html: `
-                <p>Choose a sync method.</p><br>
-                <ul style="text-align: left; margin: 0 auto; max-width: 280px; font-size: 0.9em;">
-                    <li><b>Sync:</b> Fetches new games since your last sync.</li>
-                    <li><b>Sync Recent:</b> Fetches games from the last X days.</li>
-                    <li><b>Full Resync:</b> Fetches your entire game history.</li>
-                </ul>
-            `,
+            html: `<p>Choose a sync method.</p><br>
+                   <ul style="text-align: left; margin: 0 auto; max-width: 280px; font-size: 0.9em;">
+                       <li><b>Sync:</b> Fetches new games since your last sync.</li>
+                       <li><b>Sync Recent:</b> Fetches games from the last X days.</li>
+                       <li><b>Full Resync:</b> Fetches your entire game history.</li>
+                   </ul>`,
             icon: 'info',
             showDenyButton: true,
             showCancelButton: true,
@@ -80,17 +71,11 @@
                 input: 'number',
                 inputLabel: 'How many days of history do you want to sync?',
                 inputValue: 1,
-                inputAttributes: {
-                    min: '1',
-                    step: '1'
-                },
+                inputAttributes: { min: '1', step: '1' },
                 showCancelButton: true,
                 confirmButtonText: 'Start Sync'
             });
-
-            if (days) {
-                performSync({ mode: 'dateRange', days: parseInt(days) });
-            }
+            if (days) performSync({ mode: 'dateRange', days: parseInt(days) });
         } else if (result.dismiss === Swal.DismissReason.cancel) {
             const confirmResult = await Swal.fire({
                 title: 'Are you sure?',
@@ -100,15 +85,14 @@
                 confirmButtonText: 'Yes, do a full resync!',
                 cancelButtonText: 'Cancel'
             });
-            if (confirmResult.isConfirmed) {
-                performSync({ mode: 'full' });
-            }
+            if (confirmResult.isConfirmed) performSync({ mode: 'full' });
         }
     }
 
     const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
     function formatTimeAgo(timestamp) {
+        if (timestamp === 0) return 'Never';
         const now = Date.now();
         const seconds = Math.floor((now - timestamp) / 1000);
         if (seconds < 60) return `${seconds} seconds ago`;
@@ -128,13 +112,12 @@
                 headers: { "Accept": "application/json" },
                 onload: (response) => {
                     try {
-                        const data = JSON.parse(response.responseText);
-                        resolve(data.lastSync || 0);
+                        resolve(JSON.parse(response.responseText).lastSync || 0);
                     } catch (e) {
                         reject(new Error('Failed to parse sync info from server.'));
                     }
                 },
-                onerror: (error) => reject(new Error('Network error fetching sync info. Is the server running?'))
+                onerror: () => reject(new Error('Network error fetching sync info.'))
             });
         });
     }
@@ -143,182 +126,117 @@
         Swal.fire({ title: 'Syncing...', text: 'Initializing...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
         try {
-            let syncThreshold = 0; // Will be a timestamp
-            const now = Date.now();
-
+            let syncThreshold = 0;
             if (options.mode === 'standard') {
                 Swal.update({ text: 'Checking server for last sync date...' });
                 syncThreshold = await getLastSyncTimestampFromServer();
                 const lastSyncDate = new Date(syncThreshold);
                 const timeAgo = formatTimeAgo(syncThreshold);
-                console.log(`Server's last sync date is ${lastSyncDate.toLocaleString()}. Fetching duels newer than this.`);
                 Swal.update({ text: `Last sync: ${lastSyncDate.toLocaleString()} (${timeAgo}). Looking for newer games...` });
             } else if (options.mode === 'dateRange') {
-                const daysInMs = options.days * 24 * 60 * 60 * 1000;
-                syncThreshold = now - daysInMs;
-                const syncFromDate = new Date(syncThreshold);
-                console.log(`Date Range sync initiated. Fetching duels from the last ${options.days} day(s), since ${syncFromDate.toLocaleString()}.`);
+                syncThreshold = Date.now() - (options.days * 24 * 60 * 60 * 1000);
                 Swal.update({ text: `Fetching duels from the last ${options.days} day(s)...` });
             } else { // full resync
-                console.log('Force Full Resync initiated. Fetching all available history.');
                 Swal.update({ text: 'Force Full Resync initiated. Fetching all available history.' });
             }
 
             let page = 0;
             let keepFetching = true;
-            const BATCH_SIZE_PAGES = 40;
-            const allNewDuelGameData = new Map();
-            const statsByDay = {}; // To store stats
-            let totalAdded = 0;
-            let totalRoundsInBatch = 0;
-            let roundsToProcessCount = 0;
+            const allDuelsToSend = [];
 
-            page_loop:
-            while (keepFetching) {
-                if (page >= MAX_PAGES_TO_FETCH) {
-                    console.log(`Reached max page limit of ${MAX_PAGES_TO_FETCH}.`);
-                    keepFetching = false;
+            while (keepFetching && page < MAX_PAGES_TO_FETCH) {
+                const feedResponse = await fetch(`https://www.geoguessr.com/api/v4/feed/private?count=${DUEL_FETCH_BATCH_SIZE}&page=${page}`, { credentials: 'include' });
+                if (!feedResponse.ok) throw new Error(`Failed to fetch activity feed (page ${page}).`);
+
+                const feed = await feedResponse.json();
+                if (feed.entries.length === 0) {
+                    console.log(`Found an empty page (${page}). Stopping search.`);
                     break;
                 }
 
-                const response = await fetch(`https://www.geoguessr.com/api/v4/feed/private?count=25&page=${page}`, { credentials: 'include' });
-                    if (!response.ok) throw new Error(`Failed to fetch activity feed (page ${page}).`);
-
-                    const feed = await response.json();
-                    if (feed.entries.length === 0) {
-                        console.log(`Found an empty page (${page}). Stopping search.`);
-                        keepFetching = false;
-                        break;
+                const gameIds = feed.entries.flatMap(entry => {
+                    try {
+                        const payload = JSON.parse(entry.payload);
+                        return Array.isArray(payload)
+                            ? payload.filter(sub => sub.payload?.gameMode === "Duels").map(sub => sub.payload.gameId)
+                            : (payload?.gameMode === "Duels" ? [payload.gameId] : []);
+                    } catch {
+                        return [];
                     }
+                }).filter((id, index, self) => self.indexOf(id) === index); // Unique IDs
 
-                    const lastEntry = feed.entries[feed.entries.length - 1];
-                    let dateString = 'an older date';
-                    if (lastEntry && lastEntry.created) {
-                        const d = new Date(lastEntry.created);
-                        if (!isNaN(d)) {
-                            dateString = d.toLocaleDateString();
-                        }
-                    }
-                    Swal.update({ text: `Scanning Page ${page} (Games from ~${dateString})...` });
-
-                    for (const entry of feed.entries) {
-                        if (new Date(entry.created).getTime() <= syncThreshold) {
-                            if (options.mode !== 'full') { // Don't stop for full resync
-                                console.log(`Found a game older than the sync threshold. Stopping search at page ${page}.`);
-                                keepFetching = false;
-                                break page_loop; // Exit the outer while loop completely
-                            }
-                        }
-                        try {
-                            const payloadData = JSON.parse(entry.payload);
-                            if (Array.isArray(payloadData)) {
-                                for (const sub of payloadData) {
-                                    if (sub.payload?.gameMode === "Duels" && !allNewDuelGameData.has(sub.payload.gameId)) {
-                                        allNewDuelGameData.set(sub.payload.gameId, { created: entry.created });
-                                    }
-                                }
-                            } else if (payloadData?.gameMode === "Duels" && !allNewDuelGameData.has(payloadData.gameId)) {
-                                allNewDuelGameData.set(payloadData.gameId, { created: entry.created });
-                            }
-                        } catch (e) { /* Ignore */ }
-                    }
+                if (gameIds.length === 0) {
                     page++;
-                    await sleep(100);
+                    continue;
+                }
+
+                Swal.update({ text: `Scanning Page ${page}: Found ${gameIds.length} duels. Fetching details...` });
+
+                const duelDataPromises = gameIds.map(id =>
+                    fetch(`https://game-server.geoguessr.com/api/duels/${id}`, { credentials: 'include' })
+                    .then(res => res.ok ? res.json() : null)
+                );
+                const duelDetails = (await Promise.all(duelDataPromises)).filter(Boolean);
+
+                if (duelDetails.length > 0) {
+                    const lastDuelInBatch = duelDetails[duelDetails.length - 1];
+                    const lastDuelTimestamp = new Date(lastDuelInBatch.teams[0]?.players[0]?.guesses[0]?.created).getTime();
+                    if (!isNaN(lastDuelTimestamp)) {
+                         Swal.update({ text: `Scanning Page ${page} (Games from ~${new Date(lastDuelTimestamp).toLocaleDateString()})...` });
+                    }
+
+                    for (const duel of duelDetails) {
+                        const duelTimestamp = new Date(duel.teams[0]?.players[0]?.guesses[0]?.created).getTime();
+                        if (isNaN(duelTimestamp)) continue;
+
+                        if (duelTimestamp <= syncThreshold && options.mode !== 'full') {
+                            keepFetching = false;
+                            break;
+                        }
+                        // Attach the correct timestamp for the server
+                        duel.created = new Date(duelTimestamp).toISOString();
+                        allDuelsToSend.push(duel);
+                    }
+                }
                 
-            }
-
-            if (allNewDuelGameData.size > 0) {
-                const uniqueGameData = Array.from(allNewDuelGameData.entries());
-                Swal.update({ text: `Found ${uniqueGameData.length} new duel(s). Fetching details...` });
-
-                const allDuelData = [];
-                for (let i = 0; i < uniqueGameData.length; i += DUEL_FETCH_BATCH_SIZE) {
-                    const batchGameData = uniqueGameData.slice(i, i + DUEL_FETCH_BATCH_SIZE);
-                    Swal.update({ text: `Fetching duel details ${i + 1}-${Math.min(i + DUEL_FETCH_BATCH_SIZE, uniqueGameData.length)} of ${uniqueGameData.length}...` });
-
-                    const duelDataPromises = batchGameData.map(([id, data]) =>
-                        fetch(`https://game-server.geoguessr.com/api/duels/${id}`, { credentials: 'include' })
-                        .then(res => res.ok ? res.json() : null)
-                        .then(duel => {
-                            if (duel) {
-                                duel.created = data.created; // Add the created timestamp
-                            }
-                            return duel;
-                        })
-                    );
-                    const batchDuelData = (await Promise.all(duelDataPromises)).filter(Boolean);
-                    allDuelData.push(...batchDuelData);
-
-                    if (i + DUEL_FETCH_BATCH_SIZE < uniqueGameData.length) {
-                        await sleep(DUEL_FETCH_DELAY_MS);
-                    }
-                }
-
-                if (allDuelData.length > 0) {
-                    Swal.update({ text: `Sending batch of ${allDuelData.length} duel(s) to server...` });
-                    const res = await sendBatchToServer(allDuelData);
-                    totalAdded = res.addedCount || 0;
-                    roundsToProcessCount = res.roundsToProcess?.length || 0;
-
-                    // Calculate stats from the duels that were actually added
-                    const addedDuelIds = new Set((res.roundsToProcess || []).map(r => r.split('_')[0]));
-
-                    allDuelData.forEach(duel => {
-                        const date = new Date(duel.created);
-                        if (isNaN(date.getTime())) return; // Skip if the date is invalid
-
-                        const dateKey = date.toISOString().split('T')[0]; // Use YYYY-MM-DD for reliable key
-                        if (!statsByDay[dateKey]) {
-                            statsByDay[dateKey] = { duels: 0, locations: 0 };
-                        }
-                        statsByDay[dateKey].duels++;
-                        if(addedDuelIds.has(duel.gameId)) {
-                           statsByDay[dateKey].locations += duel.rounds?.length || 0;
-                        }
-                        totalRoundsInBatch += duel.rounds?.length || 0;
-                    });
-
-
-                    if (res.roundsToProcess && res.roundsToProcess.length > 0) {
-                        await processRounds(res.roundsToProcess);
-                    }
+                if (keepFetching) {
+                    page++;
+                    await sleep(DUEL_FETCH_DELAY_MS);
                 }
             }
 
-            const skippedLocations = totalRoundsInBatch - roundsToProcessCount;
-            const foundDuelsCount = allNewDuelGameData.size;
+            let totalAdded = 0;
+            let totalRounds = 0;
+            let skippedLocations = 0;
+
+            if (allDuelsToSend.length > 0) {
+                Swal.update({ text: `Sending ${allDuelsToSend.length} duel(s) to server...` });
+                const res = await sendBatchToServer(allDuelsToSend);
+                totalAdded = res.addedCount || 0;
+                totalRounds = res.roundsToProcess?.length || 0;
+                
+                const totalLocationsInBatch = allDuelsToSend.reduce((sum, duel) => sum + (duel.rounds?.length || 0), 0);
+                skippedLocations = totalLocationsInBatch - totalRounds;
+
+                if (res.roundsToProcess && res.roundsToProcess.length > 0) {
+                    await processRounds(res.roundsToProcess);
+                }
+            }
+
+            const foundDuelsCount = allDuelsToSend.length;
             const skippedDuelsCount = foundDuelsCount - totalAdded;
 
             let summaryHtml = `
                 <div style="text-align: left; font-size: 0.9em; line-height: 1.6;">
                     <b>Total Duels Found:</b> ${foundDuelsCount}<br>
                     <b>New Duels Added:</b> ${totalAdded}<br>
-                    <b>Duels Skipped:</b> ${skippedDuelsCount}
-                </div>
-            `;
+                    <b>Duels Skipped:</b> ${skippedDuelsCount}<br>
+                    <b>New Locations:</b> ${totalRounds}<br>
+                    <b>Skipped Locations:</b> ${skippedLocations}
+                </div>`;
 
-            const summaryEntries = Object.entries(statsByDay);
-            if (summaryEntries.length > 0) {
-                summaryHtml += '<div style="text-align: left; max-height: 150px; overflow-y: auto; padding: .5em; background-color: #f7fafc; border-radius: 5px;">';
-                // Sort by date descending
-                summaryEntries.sort((a, b) => new Date(b[0]).getTime() - new Date(a[0]).getTime());
+            Swal.fire({ title: 'Sync Complete!', html: summaryHtml, icon: 'success' });
 
-                for (const [date, stats] of summaryEntries) {
-                     const displayDate = new Date(date).toLocaleDateString();
-                     summaryHtml += `<b>${displayDate}:</b> Found ${stats.duels} duels (${stats.locations} new locations)<br>`;
-                }
-                summaryHtml += '</div>';
-            }
-
-            if (skippedLocations > 0) {
-                 summaryHtml += `<p style="margin-top: 1em; color: #718096;">Skipped ${skippedLocations} locations (already processed).</p>`;
-            }
-
-            Swal.fire({
-                title: 'Sync Complete!',
-                html: summaryHtml,
-                icon: 'success'
-            });
         } catch (error) {
             Swal.fire('An Error Occurred', error.message, 'error');
         }
@@ -333,14 +251,12 @@
                 headers: { "Content-Type": "application/json" },
                 onload: (response) => {
                     try {
-                        const res = JSON.parse(response.responseText);
-                        if (res.status === 'success') resolve(res);
-                        else reject(new Error(res.message || 'Server returned an error.'));
+                        resolve(JSON.parse(response.responseText));
                     } catch (e) {
                         reject(new Error('Received an invalid response from the server.'));
                     }
                 },
-                onerror: (error) => reject(new Error('Could not connect to the sync server.'))
+                onerror: () => reject(new Error('Could not connect to the sync server.'))
             });
         });
     }
@@ -351,12 +267,10 @@
             Swal.update({ text: `Generating embedding for round ${i + 1} of ${roundIds.length}...` });
             try {
                 await processRound(roundId);
-                console.log(`Successfully processed round ${roundId}`);
             } catch (error) {
                 console.error(`Failed to process round ${roundId}:`, error.message);
-                // Continue to the next round even if one fails
             }
-            await sleep(50); // Small delay to prevent overwhelming the server and to allow UI to update
+            await sleep(50);
         }
     }
 
@@ -370,16 +284,13 @@
                 onload: (response) => {
                     try {
                         const res = JSON.parse(response.responseText);
-                        if (res.status === 'success') {
-                            resolve(res);
-                        } else {
-                            reject(new Error(res.message || `Server returned an error for round ${roundId}.`));
-                        }
+                        if (res.status === 'success') resolve(res);
+                        else reject(new Error(res.message || `Server error for round ${roundId}.`));
                     } catch (e) {
-                        reject(new Error(`Received an invalid response from the server for round ${roundId}.`));
+                        reject(new Error(`Invalid server response for round ${roundId}.`));
                     }
                 },
-                onerror: (error) => reject(new Error(`Could not connect to the server to process round ${roundId}.`))
+                onerror: () => reject(new Error(`Could not connect to process round ${roundId}.`))
             });
         });
     }
