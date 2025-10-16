@@ -32,26 +32,24 @@ export async function POST(request: Request) {
     const newDuels = duels.filter(duel => !existingDuelIds.has(duel.gameId));
 
     const pipeline = kv.pipeline();
-    let newRoundIds: string[] = [];
     let pipelineHasCommands = false;
+    let newRoundIds: string[] = [];
 
     if (newDuels.length > 0) {
       // 4. Add new duels to the pipeline
       newDuels.forEach((duel: Duel) => {
         if (duel.gameId) {
           // Remove the temporary 'created' field before saving
-          const { created, ...duelToSave } = duel;
+          const { created: _created, ...duelToSave } = duel;
           pipeline.set(duel.gameId, duelToSave);
           pipelineHasCommands = true;
-
-          // Add new rounds to the processing queue
-          if (duel.rounds) {
-            for (let i = 0; i < duel.rounds.length; i++) {
-              newRoundIds.push(`${duel.gameId}_${i + 1}`);
-            }
-          }
         }
       });
+
+      // Get all round IDs from the new duels
+      newRoundIds = newDuels.flatMap(duel =>
+        duel.rounds ? duel.rounds.map((_, i) => `${duel.gameId}_${i + 1}`) : []
+      );
     }
 
     // 5. Always update the timestamp to the latest game seen in the batch
