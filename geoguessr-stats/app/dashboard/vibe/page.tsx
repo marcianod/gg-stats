@@ -131,39 +131,46 @@ export default function VibePage() {
     duels.forEach(duel => {
       if (duel.rounds) {
         duel.rounds.forEach(round => {
+          const roundId = `${round.duelId}_${round.roundNumber}`;
+          const isSimilar = similarRounds.includes(roundId);
+
           const roundDate = new Date(round.date);
+          let isWithinDateRange = true;
           if (dateRange?.from) {
             const startDate = new Date(dateRange.from);
             startDate.setHours(0, 0, 0, 0);
-            if (roundDate < startDate) return;
+            if (roundDate < startDate) isWithinDateRange = false;
           }
           if (dateRange?.to) {
             const endDate = new Date(dateRange.to);
             endDate.setHours(23, 59, 59, 999);
-            if (roundDate > endDate) return;
+            if (roundDate > endDate) isWithinDateRange = false;
           }
-          if (round.actual) {
-            const performanceValue = colorMode === 'absolute'
-              ? round.myGuess.score ?? 0
-              : colorMode === 'delta'
-                ? round.scoreDelta ?? 0
-                : (round.scoreDelta ?? 0) * (1 - ((round.myGuess.score ?? 0) + (round.opponentGuess.score ?? 0)) / 10000);
 
-            locations.push({
-              lat: round.actual.lat,
-              lng: round.actual.lng,
-              heading: round.actual.heading,
-              pitch: round.actual.pitch,
-              zoom: round.actual.zoom,
-              performanceValue,
-              round,
-            });
+          if (isSimilar || isWithinDateRange) {
+            if (round.actual) {
+              const performanceValue = colorMode === 'absolute'
+                ? round.myGuess.score ?? 0
+                : colorMode === 'delta'
+                  ? round.scoreDelta ?? 0
+                  : (round.scoreDelta ?? 0) * (1 - ((round.myGuess.score ?? 0) + (round.opponentGuess.score ?? 0)) / 10000);
+
+              locations.push({
+                lat: round.actual.lat,
+                lng: round.actual.lng,
+                heading: round.actual.heading,
+                pitch: round.actual.pitch,
+                zoom: round.actual.zoom,
+                performanceValue,
+                round,
+              });
+            }
           }
         });
       }
     });
     return locations;
-  }, [duels, dateRange, colorMode]);
+  }, [duels, dateRange, colorMode, similarRounds]);
 
   const performanceRange = useMemo(() => {
     if (allLocations.length === 0) {
