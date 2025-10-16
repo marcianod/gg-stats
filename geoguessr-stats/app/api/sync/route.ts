@@ -48,7 +48,7 @@ export async function POST(request: Request) {
 
       // Get all round IDs from the new duels, respecting the actual number of rounds played
       newRoundIds = newDuels.flatMap(duel => {
-        const roundsPlayed = duel.currentRoundNumber || 0;
+        const roundsPlayed = (duel.currentRoundNumber as number) || 0;
         return duel.rounds 
           ? duel.rounds.slice(0, roundsPlayed).map((round: Round) => `${duel.gameId}_${round.roundNumber}`) 
           : [];
