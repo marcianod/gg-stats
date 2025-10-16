@@ -108,6 +108,18 @@
 
     const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
+    function formatTimeAgo(timestamp) {
+        const now = Date.now();
+        const seconds = Math.floor((now - timestamp) / 1000);
+        if (seconds < 60) return `${seconds} seconds ago`;
+        const minutes = Math.floor(seconds / 60);
+        if (minutes < 60) return `${minutes} minutes ago`;
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return `${hours} hours ago`;
+        const days = Math.floor(hours / 24);
+        return `${days} days ago`;
+    }
+
     function getLastSyncTimestampFromServer() {
         return new Promise((resolve, reject) => {
             GM_xmlhttpRequest({
@@ -138,8 +150,9 @@
                 Swal.update({ text: 'Checking server for last sync date...' });
                 syncThreshold = await getLastSyncTimestampFromServer();
                 const lastSyncDate = new Date(syncThreshold);
+                const timeAgo = formatTimeAgo(syncThreshold);
                 console.log(`Server's last sync date is ${lastSyncDate.toLocaleString()}. Fetching duels newer than this.`);
-                Swal.update({ text: `Last sync: ${lastSyncDate.toLocaleString()}. Looking for newer games...` });
+                Swal.update({ text: `Last sync: ${lastSyncDate.toLocaleString()} (${timeAgo}). Looking for newer games...` });
             } else if (options.mode === 'dateRange') {
                 const daysInMs = options.days * 24 * 60 * 60 * 1000;
                 syncThreshold = now - daysInMs;
@@ -160,14 +173,15 @@
             let totalRoundsInBatch = 0;
             let roundsToProcessCount = 0;
 
+            page_loop:
             while (keepFetching) {
                 if (page >= MAX_PAGES_TO_FETCH) {
-                        console.log(`Reached max page limit of ${MAX_PAGES_TO_FETCH}.`);
-                        keepFetching = false;
-                        break;
-                    }
+                    console.log(`Reached max page limit of ${MAX_PAGES_TO_FETCH}.`);
+                    keepFetching = false;
+                    break;
+                }
 
-                    const response = await fetch(`https://www.geoguessr.com/api/v4/feed/private?count=25&page=${page}`, { credentials: 'include' });
+                const response = await fetch(`https://www.geoguessr.com/api/v4/feed/private?count=25&page=${page}`, { credentials: 'include' });
                     if (!response.ok) throw new Error(`Failed to fetch activity feed (page ${page}).`);
 
                     const feed = await response.json();
@@ -192,7 +206,7 @@
                             if (options.mode !== 'full') { // Don't stop for full resync
                                 console.log(`Found a game older than the sync threshold. Stopping search at page ${page}.`);
                                 keepFetching = false;
-                                break;
+                                break page_loop; // Exit the outer while loop completely
                             }
                         }
                         try {
@@ -272,7 +286,16 @@
             }
 
             const skippedLocations = totalRoundsInBatch - roundsToProcessCount;
-            let summaryHtml = `<p style="margin-bottom: 1em;"><b>Added ${totalAdded} new duel(s).</b></p>`;
+            const foundDuelsCount = allNewDuelGameData.size;
+            const skippedDuelsCount = foundDuelsCount - totalAdded;
+
+            let summaryHtml = `
+                <div style="text-align: left; font-size: 0.9em; line-height: 1.6;">
+                    <b>Total Duels Found:</b> ${foundDuelsCount}<br>
+                    <b>New Duels Added:</b> ${totalAdded}<br>
+                    <b>Duels Skipped:</b> ${skippedDuelsCount}
+                </div>
+            `;
 
             const summaryEntries = Object.entries(statsByDay);
             if (summaryEntries.length > 0) {
