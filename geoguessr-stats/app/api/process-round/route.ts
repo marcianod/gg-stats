@@ -93,7 +93,7 @@ export async function POST(request: Request) {
 
     const existingDoc = await collection.findOne({ _id: roundId });
     if (existingDoc) {
-      console.log(`[Process-Round] Embedding for ${roundId} already exists. Skipping.`);
+      console.log(`[Process-Round] SKIPPING: Embedding for ${roundId} already exists.`);
       return NextResponse.json({ status: 'success', message: `Skipped ${roundId}, already exists.` }, { headers: CORS_HEADERS });
     }
 
@@ -108,7 +108,7 @@ export async function POST(request: Request) {
     const round = duel.rounds[roundIndex] as Round;
 
     if (!round.panorama || typeof round.panorama.heading === 'undefined' || typeof round.panorama.lat === 'undefined' || typeof round.panorama.lng === 'undefined') {
-      console.warn(`[Process-Round] Skipping round ${roundId} due to missing panorama data.`);
+      console.warn(`[Process-Round] SKIPPING: Round ${roundId} due to missing panorama data.`);
       return NextResponse.json({ status: 'success', message: `Skipped ${roundId}, missing data.` }, { headers: CORS_HEADERS });
     }
 

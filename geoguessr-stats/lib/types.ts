@@ -48,6 +48,7 @@ export interface Round {
 
 export interface Duel {
   gameId: string;
+  created?: string;
   rounds?: Round[];
   options?: {
     map?: {
