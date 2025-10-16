@@ -73,7 +73,10 @@ export function processDuels(duels: Duel[], myPlayerId: string): ProcessedDuel[]
         rounds: duel.rounds?.map((round) => {
           const myGuess = mePlayer.guesses.find(g => g.roundNumber === round.roundNumber);
           const opponentGuess = opponentPlayer.guesses.find(g => g.roundNumber === round.roundNumber);
-          if (!myGuess || !opponentGuess) return null;
+          
+          // Handle cases where a player did not guess
+          if (!myGuess && !opponentGuess) return null; // Skip if neither guessed
+
           const myGuessTime = myGuess ? (new Date(myGuess.created as string).getTime() - new Date(round.startTime as string).getTime()) / 1000 : 0;
           const opponentGuessTime = opponentGuess ? (new Date(opponentGuess.created as string).getTime() - new Date(round.startTime as string).getTime()) / 1000 : 0;
           const scoreDelta = (myGuess?.score || 0) - (opponentGuess?.score || 0);

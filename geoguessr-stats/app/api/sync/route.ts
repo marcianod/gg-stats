@@ -1,6 +1,6 @@
 import { kv } from '@vercel/kv';
 import { NextResponse } from 'next/server';
-import { type Duel } from '@/lib/types';
+import { type Duel, type Round } from '@/lib/types';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': 'https://www.geoguessr.com',
@@ -46,10 +46,13 @@ export async function POST(request: Request) {
         }
       });
 
-      // Get all round IDs from the new duels
-      newRoundIds = newDuels.flatMap(duel =>
-        duel.rounds ? duel.rounds.map((_, i) => `${duel.gameId}_${i + 1}`) : []
-      );
+      // Get all round IDs from the new duels, respecting the actual number of rounds played
+      newRoundIds = newDuels.flatMap(duel => {
+        const roundsPlayed = duel.currentRoundNumber || 0;
+        return duel.rounds 
+          ? duel.rounds.slice(0, roundsPlayed).map((round: Round) => `${duel.gameId}_${round.roundNumber}`) 
+          : [];
+      });
     }
 
     // 5. Always update the timestamp to the latest game seen in the batch
