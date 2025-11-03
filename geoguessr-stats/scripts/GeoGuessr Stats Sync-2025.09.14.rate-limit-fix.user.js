@@ -205,37 +205,23 @@
                 }
             }
 
-            let totalAdded = 0;
-            let totalRounds = 0;
-            let skippedLocations = 0;
-
-            if (allDuelsToSend.length > 0) {
-                Swal.update({ text: `Sending ${allDuelsToSend.length} duel(s) to server...` });
-                const res = await sendBatchToServer(allDuelsToSend);
-                totalAdded = res.addedCount || 0;
-                totalRounds = res.roundsToProcess?.length || 0;
-                
-                const totalLocationsInBatch = allDuelsToSend.reduce((sum, duel) => sum + (duel.rounds?.length || 0), 0);
-                skippedLocations = totalLocationsInBatch - totalRounds;
-
-                if (res.roundsToProcess && res.roundsToProcess.length > 0) {
-                    await processRounds(res.roundsToProcess);
-                }
+            if (allDuelsToSend.length === 0) {
+                Swal.fire({ title: 'Sync Complete!', text: 'No new duels found to sync.', icon: 'info' });
+                return;
             }
 
-            const foundDuelsCount = allDuelsToSend.length;
-            const skippedDuelsCount = foundDuelsCount - totalAdded;
+            Swal.update({ text: `Sending ${allDuelsToSend.length} duel(s) to the server...` });
+            const syncResult = await sendBatchToServer(allDuelsToSend);
 
-            let summaryHtml = `
-                <div style="text-align: left; font-size: 0.9em; line-height: 1.6;">
-                    <b>Total Duels Found:</b> ${foundDuelsCount}<br>
-                    <b>New Duels Added:</b> ${totalAdded}<br>
-                    <b>Duels Skipped:</b> ${skippedDuelsCount}<br>
-                    <b>New Locations:</b> ${totalRounds}<br>
-                    <b>Skipped Locations:</b> ${skippedLocations}
-                </div>`;
+            const roundsToProcess = syncResult.roundsToProcess || [];
+            let roundProcessingResults = [];
 
-            Swal.fire({ title: 'Sync Complete!', html: summaryHtml, icon: 'success' });
+            if (roundsToProcess.length > 0) {
+                roundProcessingResults = await processRounds(roundsToProcess);
+            }
+
+            const summaryHtml = generateSummaryHtml(allDuelsToSend.length, syncResult.addedCount, roundProcessingResults);
+            Swal.fire({ title: 'Sync Complete!', html: summaryHtml, icon: 'success', width: '600px' });
 
         } catch (error) {
             Swal.fire('An Error Occurred', error.message, 'error');
@@ -262,16 +248,20 @@
     }
 
     async function processRounds(roundIds) {
+        const results = [];
         for (let i = 0; i < roundIds.length; i++) {
             const roundId = roundIds[i];
-            Swal.update({ text: `Generating embedding for round ${i + 1} of ${roundIds.length}...` });
+            Swal.update({ text: `Processing round ${i + 1} of ${roundIds.length}...` });
             try {
-                await processRound(roundId);
+                const result = await processRound(roundId);
+                results.push(result);
             } catch (error) {
-                console.error(`Failed to process round ${roundId}:`, error.message);
+                console.error(`Failed to process round ${roundId}:`, error);
+                results.push({ status: 'error', roundId: roundId, reason: error.message });
             }
-            await sleep(50);
+            await sleep(50); // Rate limit
         }
+        return results;
     }
 
     function processRound(roundId) {
@@ -284,15 +274,65 @@
                 onload: (response) => {
                     try {
                         const res = JSON.parse(response.responseText);
-                        if (res.status === 'success') resolve(res);
-                        else reject(new Error(res.message || `Server error for round ${roundId}.`));
+                        // The API now sends a structured response, which we pass directly to the caller.
+                        resolve(res);
                     } catch (e) {
-                        reject(new Error(`Invalid server response for round ${roundId}.`));
+                        reject(new Error(`Invalid JSON response for round ${roundId}.`));
                     }
                 },
-                onerror: () => reject(new Error(`Could not connect to process round ${roundId}.`))
+                onerror: () => reject(new Error(`Network error processing round ${roundId}.`))
             });
         });
+    }
+
+    function generateSummaryHtml(totalDuels, newDuels, roundResults) {
+        const processed = roundResults.filter(r => r.status === 'success');
+        const skipped = roundResults.filter(r => r.status === 'skipped');
+        const errors = roundResults.filter(r => r.status === 'error');
+
+        const skippedReasons = skipped.reduce((acc, r) => {
+            acc[r.reason] = (acc[r.reason] || []);
+            acc[r.reason].push(r.roundId);
+            return acc;
+        }, {});
+
+        let detailsHtml = '';
+        if (roundResults.length > 0) {
+            const createList = (items) => items.length > 0 ? `<ul>${items.map(item => `<li>${item}</li>`).join('')}</ul>` : '<p>None</p>';
+
+            detailsHtml = `
+                <div id="sync-details" style="display: none; text-align: left; max-height: 250px; overflow-y: auto; background: #f3f4f6; padding: 10px; border-radius: 5px; margin-top: 15px; border: 1px solid #e5e7eb;">
+                    <b>Processed (${processed.length}):</b>
+                    ${createList(processed.map(r => r.roundId))}
+            `;
+
+            Object.entries(skippedReasons).forEach(([reason, ids]) => {
+                detailsHtml += `<b>Skipped - ${reason.replace(/_/g, ' ')} (${ids.length}):</b>${createList(ids)}`;
+            });
+
+            if (errors.length > 0) {
+                detailsHtml += `<b>Errors (${errors.length}):</b>${createList(errors.map(r => `${r.roundId}: ${r.reason}`))}`;
+            }
+            detailsHtml += '</div>';
+        }
+
+        const summaryContent = `
+            <div style="text-align: left; font-size: 0.95em; line-height: 1.7;">
+                <b>Total Duels Found:</b> ${totalDuels}<br>
+                <b>New Duels Added:</b> ${newDuels}<br>
+                <b>Duels Skipped (Already Synced):</b> ${totalDuels - newDuels}<br>
+                <hr style="margin: 8px 0;">
+                <b>Total Rounds to Process:</b> ${roundResults.length}<br>
+                <b>Rounds Processed:</b> ${processed.length}<br>
+                <b>Rounds Skipped:</b> ${skipped.length}<br>
+                <b>Processing Errors:</b> ${errors.length}
+            </div>
+        `;
+
+        const detailsButton = roundResults.length > 0 ?
+            `<button onclick="document.getElementById('sync-details').style.display = 'block'" class="swal2-confirm swal2-styled" style="margin-top: 10px; display: inline-block !important;">Show Details</button>` : '';
+
+        return summaryContent + detailsButton + detailsHtml;
     }
 
     const observer = new MutationObserver(() => {

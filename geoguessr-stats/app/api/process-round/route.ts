@@ -94,7 +94,7 @@ export async function POST(request: Request) {
     const existingDoc = await collection.findOne({ _id: roundId });
     if (existingDoc) {
       console.log(`[Process-Round] SKIPPING: Embedding for ${roundId} already exists.`);
-      return NextResponse.json({ status: 'success', message: `Skipped ${roundId}, already exists.` }, { headers: CORS_HEADERS });
+      return NextResponse.json({ status: 'skipped', reason: 'exists', roundId: roundId }, { headers: CORS_HEADERS });
     }
 
     const [gameId, roundIndexStr] = roundId.split('_');
@@ -109,7 +109,7 @@ export async function POST(request: Request) {
 
     if (!round.panorama || typeof round.panorama.heading === 'undefined' || typeof round.panorama.lat === 'undefined' || typeof round.panorama.lng === 'undefined') {
       console.warn(`[Process-Round] SKIPPING: Round ${roundId} due to missing panorama data.`);
-      return NextResponse.json({ status: 'success', message: `Skipped ${roundId}, missing data.` }, { headers: CORS_HEADERS });
+      return NextResponse.json({ status: 'skipped', reason: 'missing_data', roundId: roundId }, { headers: CORS_HEADERS });
     }
 
     const imageBuffer = await fetchStreetViewImage(round.panorama.lat, round.panorama.lng, round.panorama.heading, round.panorama.pitch ?? 0, round.panorama.zoom ?? 0);
@@ -117,7 +117,7 @@ export async function POST(request: Request) {
     await collection.insertOne({ _id: roundId, embedding: embedding });
 
     console.log(`[Process-Round] Successfully processed and saved embedding for ${roundId}.`);
-    return NextResponse.json({ status: 'success', processed: roundId }, { headers: CORS_HEADERS });
+    return NextResponse.json({ status: 'success', roundId: roundId }, { headers: CORS_HEADERS });
 
   } catch (error) {
     console.error('[Process-Round] A critical error occurred:', error);
