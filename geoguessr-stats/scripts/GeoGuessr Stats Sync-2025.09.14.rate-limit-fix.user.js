@@ -21,7 +21,7 @@
     const lastSyncApiUrl = `${baseUrl}/api/last-sync`;
     const MAX_PAGES_TO_FETCH = 200;
     const DUEL_FETCH_BATCH_SIZE = 25; // Match the feed size
-    const DUEL_FETCH_DELAY_MS = 1000;
+    const DUEL_FETCH_DELAY_MS = 2500;
 
     function addSyncButton() {
         const actionsContainer = document.querySelector('[class^="profile-header_actions__"]');
@@ -145,8 +145,27 @@
             const allDuelsToSend = [];
 
             while (keepFetching && page < MAX_PAGES_TO_FETCH) {
-                const feedResponse = await fetch(`https://www.geoguessr.com/api/v4/feed/private?count=${DUEL_FETCH_BATCH_SIZE}&page=${page}`, { credentials: 'include' });
-                if (!feedResponse.ok) throw new Error(`Failed to fetch activity feed (page ${page}).`);
+                let feedResponse;
+                let attempts = 0;
+                const maxAttempts = 4;
+
+                while (attempts < maxAttempts) {
+                    attempts++;
+                    feedResponse = await fetch(`https://www.geoguessr.com/api/v4/feed/private?count=${DUEL_FETCH_BATCH_SIZE}&page=${page}`, { credentials: 'include' });
+
+                    if (feedResponse.ok) {
+                        break; // Success, exit the retry loop
+                    }
+
+                    if (feedResponse.status === 429 && attempts < maxAttempts) {
+                        const delay = 5000 * Math.pow(2, attempts - 1); // 5s, 10s, 20s
+                        Swal.update({ text: `Rate limited. Retrying in ${delay / 1000} seconds... (Attempt ${attempts}/${maxAttempts - 1})` });
+                        await sleep(delay);
+                    } else {
+                        // For non-429 errors or if max attempts are reached
+                        throw new Error(`Failed to fetch activity feed (page ${page}) after ${attempts} attempt(s). Status: ${feedResponse.status}`);
+                    }
+                }
 
                 const feed = await feedResponse.json();
                 if (feed.entries.length === 0) {
