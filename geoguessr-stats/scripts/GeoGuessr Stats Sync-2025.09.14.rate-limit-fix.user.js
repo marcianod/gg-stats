@@ -22,6 +22,7 @@
     const MAX_PAGES_TO_FETCH = 200;
     const DUEL_FETCH_BATCH_SIZE = 25; // Match the feed size
     const DUEL_FETCH_DELAY_MS = 2500;
+    const DUEL_DETAILS_FETCH_DELAY_MS = 300;
 
     function addSyncButton() {
         const actionsContainer = document.querySelector('[class^="profile-header_actions__"]');
@@ -191,11 +192,17 @@
 
                 Swal.update({ text: `Scanning Page ${page}: Found ${gameIds.length} duels. Fetching details...` });
 
-                const duelDataPromises = gameIds.map(id =>
-                    fetch(`https://game-server.geoguessr.com/api/duels/${id}`, { credentials: 'include' })
-                    .then(res => res.ok ? res.json() : null)
-                );
-                const duelDetails = (await Promise.all(duelDataPromises)).filter(Boolean);
+                const duelDetails = [];
+                for (let i = 0; i < gameIds.length; i++) {
+                    const id = gameIds[i];
+                    Swal.update({ text: `Fetching duel ${i + 1} of ${gameIds.length} on page ${page}...` });
+                    const res = await fetch(`https://game-server.geoguessr.com/api/duels/${id}`, { credentials: 'include' });
+                    if (res.ok) {
+                        const duel = await res.json();
+                        duelDetails.push(duel);
+                    }
+                    await sleep(DUEL_DETAILS_FETCH_DELAY_MS);
+                }
 
                 if (duelDetails.length > 0) {
                     const lastDuelInBatch = duelDetails[duelDetails.length - 1];
