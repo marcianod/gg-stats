@@ -49,65 +49,65 @@ export interface MapProps {
 }
 
 function getColorForWinRate(winRate: number | undefined): string {
-    if (winRate === undefined) return 'transparent';
-    if (winRate > 70) return '#1a9641';
-    if (winRate > 60) return '#a6d96a';
-    if (winRate > 50) return '#ffffbf';
-    if (winRate > 40) return '#fdae61';
-    return '#d7191c';
+  if (winRate === undefined) return 'transparent';
+  if (winRate > 70) return '#1a9641';
+  if (winRate > 60) return '#a6d96a';
+  if (winRate > 50) return '#ffffbf';
+  if (winRate > 40) return '#fdae61';
+  return '#d7191c';
 }
 
 function ChoroplethLayer({ geoJson, countryStats, onCountrySelect, selectedCountry, onCountryClick }: MapProps) {
-    const geoJsonLayer = useRef<L.GeoJSON | null>(null);
+  const geoJsonLayer = useRef<L.GeoJSON | null>(null);
 
-    const style = (feature: Feature<Geometry, CountryProperties> | undefined) => {
-        if (!feature || !feature.properties) {
-            return {};
-        }
-        const properties = feature.properties as CountryProperties;
-        const countryCode = (properties['ISO3166-1-Alpha-2'] as string).toLowerCase();
-        const stats = countryStats?.find(c => c.countryCode === countryCode);
-        const winRate = stats ? (stats.wins / stats.totalRounds) * 100 : undefined;
-        return {
-            fillColor: getColorForWinRate(winRate),
-            weight: 0,
-            opacity: 0,
-            color: 'white',
-            fillOpacity: 0
-        };
+  const style = (feature: Feature<Geometry, CountryProperties> | undefined) => {
+    if (!feature || !feature.properties) {
+      return {};
+    }
+    const properties = feature.properties as CountryProperties;
+    const countryCode = (properties['ISO3166-1-Alpha-2'] as string).toLowerCase();
+    const stats = countryStats?.find(c => c.countryCode === countryCode);
+    const winRate = stats ? (stats.wins / stats.totalRounds) * 100 : undefined;
+    return {
+      fillColor: getColorForWinRate(winRate),
+      weight: 0,
+      opacity: 0,
+      color: 'white',
+      fillOpacity: 0
     };
+  };
 
-    const onEachFeature = (feature: Feature<Geometry, CountryProperties> | undefined, layer: L.Layer) => {
-        if (!feature || !feature.properties) {
-            return;
+  const onEachFeature = (feature: Feature<Geometry, CountryProperties> | undefined, layer: L.Layer) => {
+    if (!feature || !feature.properties) {
+      return;
+    }
+    const properties = feature.properties as CountryProperties;
+    const countryCode = (properties['ISO3166-1-Alpha-2'] as string).toLowerCase();
+    layer.on({
+      click: () => {
+        if (onCountrySelect) {
+          onCountrySelect(countryCode);
         }
-        const properties = feature.properties as CountryProperties;
-        const countryCode = (properties['ISO3166-1-Alpha-2'] as string).toLowerCase();
-        layer.on({
-            click: () => {
-                if (onCountrySelect) {
-                    onCountrySelect(countryCode);
-                }
-                if (onCountryClick) {
-                    onCountryClick(countryCode);
-                }
-            }
-        });
-    };
-
-    useEffect(() => {
-        if (geoJsonLayer.current && selectedCountry) {
-            const countryLayer = Object.values(geoJsonLayer.current.getLayers()).find((layer) => {
-                const l = layer as (L.Layer & { feature?: Feature<Geometry, CountryProperties> });
-                return l.feature?.properties?.['ISO3166-1-Alpha-2'] === selectedCountry.countryCode;
-            });
-            if (countryLayer) {
-                (countryLayer as L.Path).bringToFront();
-            }
+        if (onCountryClick) {
+          onCountryClick(countryCode);
         }
-    }, [selectedCountry]);
+      }
+    });
+  };
 
-    return <GeoJSON ref={geoJsonLayer} data={geoJson as FeatureCollection<Geometry, CountryProperties>} style={style} onEachFeature={onEachFeature} />;
+  useEffect(() => {
+    if (geoJsonLayer.current && selectedCountry) {
+      const countryLayer = Object.values(geoJsonLayer.current.getLayers()).find((layer) => {
+        const l = layer as (L.Layer & { feature?: Feature<Geometry, CountryProperties> });
+        return l.feature?.properties?.['ISO3166-1-Alpha-2'] === selectedCountry.countryCode;
+      });
+      if (countryLayer) {
+        (countryLayer as L.Path).bringToFront();
+      }
+    }
+  }, [selectedCountry]);
+
+  return <GeoJSON ref={geoJsonLayer} data={geoJson as FeatureCollection<Geometry, CountryProperties>} style={style} onEachFeature={onEachFeature} />;
 }
 
 function HeatmapMarkers({ locations, onLocationClick, onLocationPin, onClearActive, activeLocation, pinnedLocations, performanceRange, similarRounds }: MapProps) {
@@ -243,13 +243,13 @@ function MapBounds({ roundData, selectedCountry, geoJson, locations }: { roundDa
 
   useEffect(() => {
     if (selectedCountry && geoJson && !roundData) {
-        const countryFeature = geoJson.features.find((feature: Feature<Geometry, CountryProperties>) => (feature.properties['ISO3166-1-Alpha-2'] as string).toLowerCase() === selectedCountry.countryCode);
-        if (countryFeature) {
-            const bounds = L.geoJSON(countryFeature).getBounds();
-            map.fitBounds(bounds);
-        }
+      const countryFeature = geoJson.features.find((feature: Feature<Geometry, CountryProperties>) => (feature.properties['ISO3166-1-Alpha-2'] as string).toLowerCase() === selectedCountry.countryCode);
+      if (countryFeature) {
+        const bounds = L.geoJSON(countryFeature).getBounds();
+        map.fitBounds(bounds);
+      }
     } else if (!roundData && !selectedCountry && !locations?.length) {
-        map.setView([20, 0], 2);
+      map.setView([20, 0], 2);
     }
   }, [map, selectedCountry, geoJson, roundData, locations?.length]);
 
@@ -266,16 +266,72 @@ function MapEvents({ onClearActive }: { onClearActive?: () => void }) {
   return null;
 }
 
-export default function Map(props: MapProps) {
-  const { roundData, onClearActive } = props;
+
+
+
+
+function ConfusionMarkers({ rounds }: { rounds: RoundData[] }) {
+  return (
+    <>
+      {rounds.map((round, i) => {
+        // Calculate intensity based on points lost (scoreDelta < 0).
+        // Max points in a round is 5000.
+        const pointsLost = round.scoreDelta < 0 ? Math.abs(round.scoreDelta) : 0;
+        const ratio = Math.min(Math.max(pointsLost / 5000, 0), 1); // Clamp between 0 and 1
+
+        // Dynamic style
+        const opacity = 0.2 + (ratio * 0.8); // Slightly higher base opacity
+        const weight = 1.5 + (ratio * 3.5); // Min 1.5px, Max 5px
+        const radius = 2 + (ratio * 2);
+
+        const midLat = (round.actual.lat + round.myGuess.lat) / 2;
+        const midLng = (round.actual.lng + round.myGuess.lng) / 2;
+        const midpoint = { lat: midLat, lng: midLng };
+
+        return (
+          <div key={round.duelId + round.roundNumber + i}>
+            {/* Actual: Green Dot */}
+            <CircleMarker
+              center={round.actual}
+              radius={radius}
+              pathOptions={{ color: '#22c55e', fillColor: '#22c55e', fillOpacity: opacity, weight: 0 }}
+            />
+            {/* Guess: Red Dot */}
+            <CircleMarker
+              center={round.myGuess}
+              radius={radius}
+              pathOptions={{ color: '#ef4444', fillColor: '#ef4444', fillOpacity: opacity, weight: 0 }}
+            />
+
+            {/* Green Segment (Actual -> Midpoint) */}
+            <Polyline
+              positions={[round.actual, midpoint]}
+              pathOptions={{ color: '#22c55e', dashArray: 'none', weight: weight, opacity: opacity }}
+            />
+
+            {/* Red Segment (Midpoint -> Guess) */}
+            <Polyline
+              positions={[midpoint, round.myGuess]}
+              pathOptions={{ color: '#ef4444', dashArray: 'none', weight: weight, opacity: opacity }}
+            />
+          </div>
+        )
+      })}
+    </>
+  );
+}
+
+
+export default function Map(props: MapProps & { confusionRounds?: RoundData[] }) {
+  const { roundData, onClearActive, confusionRounds } = props;
 
   const handleMarkerClick = (url: string) => {
     window.open(url, '_blank');
   };
 
   let myReplayUrl: string | undefined,
-      oppReplayUrl: string | undefined,
-      actualStreetViewUrl: string | undefined;
+    oppReplayUrl: string | undefined,
+    actualStreetViewUrl: string | undefined;
 
   if (roundData) {
     myReplayUrl = `https://www.geoguessr.com/duels/${roundData.duelId}/replay?player=${roundData.myPlayerId}&round=${roundData.roundNumber}&step=0`;
@@ -290,9 +346,9 @@ export default function Map(props: MapProps) {
   }
 
   return (
-    <MapContainer 
-      center={[20, 0]} 
-      zoom={2} 
+    <MapContainer
+      center={[20, 0]}
+      zoom={2}
       style={{ height: '100%', width: '100%', borderRadius: '0.5rem' }}
     >
       <TileLayer
@@ -342,9 +398,10 @@ export default function Map(props: MapProps) {
         </>
       )}
       {(props.activeTab === 'countries' || props.onCountryClick) && props.geoJson && (
-          <ChoroplethLayer {...props} />
+        <ChoroplethLayer {...props} />
       )}
       <HeatmapMarkers {...props} />
+      {confusionRounds && <ConfusionMarkers rounds={confusionRounds} />}
       <MapBounds roundData={props.roundData ?? null} selectedCountry={props.selectedCountry ?? null} geoJson={props.geoJson} locations={props.locations} />
       <MapEvents onClearActive={onClearActive} />
     </MapContainer>
