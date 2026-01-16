@@ -1,4 +1,4 @@
-import { kv } from '../lib/kv.ts';
+import { kv } from '../lib/kv';
 import { MongoClient } from 'mongodb';
 import dotenv from 'dotenv';
 import path from 'path';

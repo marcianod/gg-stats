@@ -3,7 +3,7 @@ import path from 'path';
 import { Duel } from '../lib/types';
 import dotenv from 'dotenv';
 import { PredictionServiceClient, helpers } from '@google-cloud/aiplatform';
-import { kv } from '../lib/kv.ts';
+import { kv } from '../lib/kv';
 
 // Load environment variables from .env.local
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });

@@ -1,5 +1,5 @@
 import { MongoClient } from 'mongodb';
-import { kv } from '../lib/kv.ts';
+import { kv } from '../lib/kv';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
