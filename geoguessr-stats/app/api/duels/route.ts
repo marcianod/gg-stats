@@ -1,29 +1,14 @@
-import { kv } from '@/lib/kv';
+import { getDuelsCollection } from '@/lib/db';
 import { NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const allKeys: string[] = [];
-    for await (const key of kv.scanIterator({ match: '*' })) {
-      allKeys.push(key);
-    }
-    console.log(`[Duels API] Found ${allKeys.length} total keys. Sample keys:`, allKeys.slice(0, 10));
+    const collection = await getDuelsCollection();
+    const duels = await collection.find({}).toArray();
 
-    const duelKeys = allKeys.filter(key => !key.startsWith('embedding:') && key !== 'lastSyncTimestamp');
-    console.log(`[Duels API] Found ${duelKeys.length} duel keys after filtering.`);
-
-    if (duelKeys.length === 0) {
-      return NextResponse.json([]);
-    }
-
-    const duels: unknown[] = [];
-    const chunkSize = 500;
-
-    for (let i = 0; i < duelKeys.length; i += chunkSize) {
-      const chunkKeys = duelKeys.slice(i, i + chunkSize);
-      const chunkDuels = await kv.mget(...chunkKeys);
-      duels.push(...chunkDuels);
-    }
+    console.log(`[Duels API] Found ${duels.length} duels in MongoDB.`);
 
     return NextResponse.json(duels);
   } catch (error) {

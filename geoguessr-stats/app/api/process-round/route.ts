@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server';
-import { kv } from '@/lib/kv';
-import { connectToDatabase } from '@/lib/mongodb';
+import { getEmbeddingsCollection, getDuelsCollection } from '@/lib/db'; // Using new lib/db
 import { Duel, Round } from '@/lib/types';
 import { PredictionServiceClient, helpers } from '@google-cloud/aiplatform';
+
+export const dynamic = 'force-dynamic';
 
 // --- Configuration ---
 const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 const VERTEX_PROJECT_ID = process.env.VERTEX_AI_PROJECT_ID;
-const DB_NAME = 'gg-vector-db';
-const COLLECTION_NAME = 'gg-vector-db-collection';
+
 // --- Type Definitions ---
 interface EmbeddingDocument {
   _id: string;
@@ -87,9 +87,8 @@ export async function POST(request: Request) {
 
     console.log(`[Process-Round] Processing round: ${roundId}`);
 
-    const client = await connectToDatabase();
-    const db = client.db(DB_NAME);
-    const collection = db.collection<EmbeddingDocument>(COLLECTION_NAME);
+    const collection = await getEmbeddingsCollection();
+    const duelsCollection = await getDuelsCollection();
 
     const existingDoc = await collection.findOne({ _id: roundId });
     if (existingDoc) {
@@ -100,7 +99,8 @@ export async function POST(request: Request) {
     const [gameId, roundIndexStr] = roundId.split('_');
     const roundIndex = parseInt(roundIndexStr, 10) - 1;
 
-    const duel = await kv.get<Duel>(gameId);
+    const duel = await duelsCollection.findOne({ _id: gameId } as any);
+
     if (!duel || !duel.rounds || !duel.rounds[roundIndex]) {
       throw new Error(`Could not find duel data for round ${roundId}`);
     }
@@ -114,6 +114,8 @@ export async function POST(request: Request) {
 
     const imageBuffer = await fetchStreetViewImage(round.panorama.lat, round.panorama.lng, round.panorama.heading, round.panorama.pitch ?? 0, round.panorama.zoom ?? 0);
     const embedding = await generateEmbedding(imageBuffer);
+
+    // @ts-ignore
     await collection.insertOne({ _id: roundId, embedding: embedding });
 
     console.log(`[Process-Round] Successfully processed and saved embedding for ${roundId}.`);

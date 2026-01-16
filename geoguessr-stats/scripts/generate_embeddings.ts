@@ -3,19 +3,20 @@ import path from 'path';
 import { Duel } from '../lib/types';
 import dotenv from 'dotenv';
 import { PredictionServiceClient, helpers } from '@google-cloud/aiplatform';
-import { kv } from '../lib/kv';
+import { MongoClient } from 'mongodb';
+import { EMBEDDINGS_COLLECTION as EMBEDDINGS_COLLECTION_NAME } from '../lib/db';
 
 // Load environment variables from .env.local
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 const GOOGLE_API_KEY = process.env.GOOGLE_STREET_VIEW_API_KEY;
 const VERTEX_PROJECT_ID = process.env.VERTEX_AI_PROJECT_ID;
+const MONGODB_URI = process.env.MONGODB_URI;
+const DB_NAME = 'gg-vector-db';
+const EMBEDDINGS_COLLECTION = EMBEDDINGS_COLLECTION_NAME;
+const DUELS_COLLECTION = 'duels';
 
 const IMAGES_DIR_PATH = path.join(process.cwd(), 'public/data/round_images');
-
-interface RoundEmbedding {
-  [roundId: string]: number[];
-}
 
 function getFov(zoom: number | undefined): number {
   if (zoom === undefined) return 90;
@@ -87,31 +88,38 @@ async function generateEmbedding(imageBuffer: Buffer): Promise<number[]> {
 }
 
 async function main() {
-  console.log('Starting embedding generation process...');
+  console.log('Starting embedding generation process (MongoDB)...');
+
+  if (!MONGODB_URI) {
+    console.error('MONGODB_URI is missing!');
+    return;
+  }
+
+  const client = new MongoClient(MONGODB_URI);
 
   try {
+    await client.connect();
+    const db = client.db(DB_NAME);
+    const duelsCol = db.collection<Duel>(DUELS_COLLECTION);
+    const embeddingsCol = db.collection(EMBEDDINGS_COLLECTION);
+
     await fs.mkdir(IMAGES_DIR_PATH, { recursive: true });
 
-    console.log('Fetching duel data from API...');
-    const duelsResponse = await fetch('http://localhost:3000/api/duels');
-    if (!duelsResponse.ok) {
-      throw new Error(`Failed to fetch duels: ${duelsResponse.statusText}`);
-    }
-    const duels: Duel[] = await duelsResponse.json();
+    console.log('Fetching duel data from MongoDB...');
+    const duels = await duelsCol.find({}).toArray();
     console.log(`Fetched ${duels.length} duels.`);
 
-    const newEmbeddings: RoundEmbedding = {};
     let roundsProcessed = 0;
 
     for (const duel of duels) {
-      if (duel.rounds && duel.rounds.length > 0) {
+      const gameId = (duel.gameId || duel._id) as unknown as string;
+      if (duel.rounds && duel.rounds.length > 0 && gameId) {
         for (let i = 0; i < duel.rounds.length; i++) {
           const round = duel.rounds[i] as any;
-          const roundId = `${duel.gameId}_${i + 1}`;
-          const embeddingKey = `embedding:${roundId}`;
+          const roundId = `${gameId}_${i + 1}`;
 
-          // Skip if embedding already exists in KV store
-          const existingEmbedding = await kv.get(embeddingKey);
+          // Check if embedding already exists in MongoDB
+          const existingEmbedding = await embeddingsCol.findOne({ _id: roundId } as any);
           if (existingEmbedding) {
             continue;
           }
@@ -143,8 +151,16 @@ async function main() {
             }
 
             const embedding = await generateEmbedding(imageBuffer);
-            newEmbeddings[embeddingKey] = embedding;
+
+            // Save immediately to Mongo
+            await embeddingsCol.insertOne({
+              _id: roundId,
+              embedding: embedding
+            } as any);
+
             roundsProcessed++;
+            console.log(`Saved embedding for ${roundId}`);
+
           } catch (error) {
             console.error(`Skipping round ${roundId} due to an error:`, error);
           }
@@ -153,8 +169,6 @@ async function main() {
     }
 
     if (roundsProcessed > 0) {
-      console.log(`Saving ${roundsProcessed} new embeddings to Vercel KV...`);
-      await kv.mset(newEmbeddings);
       console.log(`Successfully generated and saved embeddings for ${roundsProcessed} new rounds.`);
     } else {
       console.log('No new rounds to process. Embeddings are up to date.');
@@ -162,6 +176,8 @@ async function main() {
 
   } catch (error) {
     console.error('An error occurred during embedding generation:', error);
+  } finally {
+    await client.close();
   }
 }
 

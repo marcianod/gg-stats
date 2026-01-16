@@ -1,6 +1,8 @@
-import { kv } from '@/lib/kv';
+import { getDuelsCollection, getConfigCollection } from '@/lib/db';
 import { NextResponse } from 'next/server';
 import { type Duel, type Round } from '@/lib/types';
+
+export const dynamic = 'force-dynamic';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': 'https://www.geoguessr.com',
@@ -25,47 +27,62 @@ export async function POST(request: Request) {
 
     // 2. Check which duels already exist in the database
     const gameIds = duels.map(d => d.gameId);
-    const existingDuels = await kv.mget<Duel[]>(...gameIds);
-    const existingDuelIds = new Set(existingDuels.filter(Boolean).map(d => d.gameId));
+    const collection = await getDuelsCollection();
+
+    // Find existing duels by ID
+    const existingDocs = await collection.find({ _id: { $in: gameIds } }, { projection: { _id: 1 } }).toArray();
+    const existingDuelIds = new Set(existingDocs.map(d => d._id));
 
     // 3. Filter to get only the new duels
     const newDuels = duels.filter(duel => !existingDuelIds.has(duel.gameId));
 
-    const pipeline = kv.pipeline();
-    let pipelineHasCommands = false;
     let newRoundIds: string[] = [];
+    const bulkOps: any[] = [];
 
     if (newDuels.length > 0) {
-      // 4. Add new duels to the pipeline
+      // 4. Prepare bulk operations
       newDuels.forEach((duel: Duel) => {
         if (duel.gameId) {
-          // Remove the temporary 'created' field before saving
+          // Remove the temporary 'created' field before saving if needed, though Mongo handles it fine
+          // We'll keep consistent behavior with previous impl
           const { created: _created, ...duelToSave } = duel;
-          pipeline.set(duel.gameId, duelToSave);
-          pipelineHasCommands = true;
+
+          bulkOps.push({
+            updateOne: {
+              filter: { _id: duel.gameId },
+              update: { $set: duelToSave },
+              upsert: true
+            }
+          });
         }
       });
 
-      // Get all round IDs from the new duels, respecting the actual number of rounds played
+      // Get all round IDs from the new duels
       newRoundIds = newDuels.flatMap(duel => {
         const roundsPlayed = (duel.currentRoundNumber as number) || 0;
         return duel.rounds
           ? duel.rounds.slice(0, roundsPlayed).map((round: Round) => `${duel.gameId}_${round.roundNumber}`)
           : [];
       });
+
+      if (bulkOps.length > 0) {
+        await collection.bulkWrite(bulkOps);
+      }
     }
 
     // 5. Always update the timestamp to the latest game seen in the batch
     if (latestTimestamp > 0) {
-      const currentLastSync = await kv.get<number>('lastSyncTimestamp') || 0;
-      if (latestTimestamp > currentLastSync) {
-        pipeline.set('lastSyncTimestamp', latestTimestamp);
-        pipelineHasCommands = true;
-      }
-    }
+      const configCollection = await getConfigCollection();
+      const currentDoc = await configCollection.findOne({ _id: 'lastSyncTimestamp' });
+      const currentLastSync = currentDoc?.value || 0;
 
-    if (pipelineHasCommands) {
-      await pipeline.exec();
+      if (latestTimestamp > currentLastSync) {
+        await configCollection.updateOne(
+          { _id: 'lastSyncTimestamp' },
+          { $set: { value: latestTimestamp } },
+          { upsert: true }
+        );
+      }
     }
 
     return NextResponse.json({

@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/mongodb';
-
-const DB_NAME = 'gg-vector-db';
-const COLLECTION_NAME = 'gg-vector-db-collection';
+import { getEmbeddingsCollection } from '@/lib/db';
 
 interface EmbeddingDocument {
-    _id: string;
-    embedding: number[];
+  _id: string;
+  embedding: number[];
 }
 
 export async function GET(
@@ -23,9 +20,7 @@ export async function GET(
     const thresholdParam = searchParams.get('threshold');
     const similarityThreshold = thresholdParam ? parseFloat(thresholdParam) : 0.85;
 
-    const client = await connectToDatabase();
-    const db = client.db(DB_NAME);
-    const collection = db.collection<EmbeddingDocument>(COLLECTION_NAME);
+    const collection = await getEmbeddingsCollection();
 
     // 1. Get the vector for the target round
     const targetDocument = await collection.findOne({ _id: roundId });
