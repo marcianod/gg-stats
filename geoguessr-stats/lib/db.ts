@@ -32,14 +32,13 @@ export async function getDb(): Promise<Db> {
     return cachedDb;
 }
 
-// Basic Document type for generic collections if no specifc type is needed
-import { Document } from 'mongodb';
+
 
 import { Duel } from './types';
 
 export interface Config {
     _id: string; // The config key (e.g., 'lastSyncTimestamp')
-    value: any;
+    value: unknown;
 }
 
 export async function getDuelsCollection(): Promise<Collection<Duel & { _id: string }>> {

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getEmbeddingsCollection, getDuelsCollection } from '@/lib/db'; // Using new lib/db
-import { Duel, Round } from '@/lib/types';
+import { Round } from '@/lib/types';
 import { PredictionServiceClient, helpers } from '@google-cloud/aiplatform';
 
 export const dynamic = 'force-dynamic';

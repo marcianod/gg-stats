@@ -77,7 +77,7 @@ export async function POST(request: Request) {
     if (latestTimestamp > 0) {
       const configCollection = await getConfigCollection();
       const currentDoc = await configCollection.findOne({ _id: 'lastSyncTimestamp' });
-      const currentLastSync = currentDoc?.value || 0;
+      const currentLastSync = (currentDoc?.value as number) || 0;
 
       if (latestTimestamp > currentLastSync) {
         await configCollection.updateOne(
