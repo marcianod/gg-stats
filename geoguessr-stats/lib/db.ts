@@ -35,19 +35,31 @@ export async function getDb(): Promise<Db> {
 // Basic Document type for generic collections if no specifc type is needed
 import { Document } from 'mongodb';
 
-export async function getDuelsCollection(): Promise<Collection<Document>> {
-    const db = await getDb();
-    return db.collection(COLLECTION_NAME);
+import { Duel } from './types';
+
+export interface Config {
+    _id: string; // The config key (e.g., 'lastSyncTimestamp')
+    value: any;
 }
 
-export async function getConfigCollection(): Promise<Collection<Document>> {
+export async function getDuelsCollection(): Promise<Collection<Duel & { _id: string }>> {
     const db = await getDb();
-    return db.collection(CONFIG_COLLECTION_NAME);
+    return db.collection<Duel & { _id: string }>(COLLECTION_NAME);
 }
 
-export async function getEmbeddingsCollection(): Promise<Collection<Document>> {
+export async function getConfigCollection(): Promise<Collection<Config>> {
     const db = await getDb();
-    return db.collection(EMBEDDINGS_COLLECTION);
+    return db.collection<Config>(CONFIG_COLLECTION_NAME);
+}
+
+export interface Embedding {
+    _id: string; // roundId
+    embedding: number[];
+}
+
+export async function getEmbeddingsCollection(): Promise<Collection<Embedding>> {
+    const db = await getDb();
+    return db.collection<Embedding>(EMBEDDINGS_COLLECTION);
 }
 
 // Helper to close connection (mainly for scripts)

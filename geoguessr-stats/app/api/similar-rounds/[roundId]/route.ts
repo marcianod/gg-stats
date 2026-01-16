@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getEmbeddingsCollection } from '@/lib/db';
 
-interface EmbeddingDocument {
-  _id: string;
-  embedding: number[];
-}
+
 
 export async function GET(
   request: NextRequest,

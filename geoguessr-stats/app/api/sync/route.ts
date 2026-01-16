@@ -76,14 +76,12 @@ export async function POST(request: Request) {
     // 5. Always update the timestamp to the latest game seen in the batch
     if (latestTimestamp > 0) {
       const configCollection = await getConfigCollection();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const currentDoc = await configCollection.findOne({ _id: 'lastSyncTimestamp' } as any);
+      const currentDoc = await configCollection.findOne({ _id: 'lastSyncTimestamp' });
       const currentLastSync = currentDoc?.value || 0;
 
       if (latestTimestamp > currentLastSync) {
         await configCollection.updateOne(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          { _id: 'lastSyncTimestamp' } as any,
+          { _id: 'lastSyncTimestamp' },
           { $set: { value: latestTimestamp } },
           { upsert: true }
         );

@@ -10,10 +10,7 @@ const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 const VERTEX_PROJECT_ID = process.env.VERTEX_AI_PROJECT_ID;
 
 // --- Type Definitions ---
-interface EmbeddingDocument {
-  _id: string;
-  embedding: number[];
-}
+
 
 // --- Google Cloud AI Platform Client ---
 // Check for Google Cloud credentials
@@ -90,7 +87,6 @@ export async function POST(request: Request) {
     const collection = await getEmbeddingsCollection();
     const duelsCollection = await getDuelsCollection();
 
-    // @ts-expect-error - _id is a string in our schema but Mongo types expect ObjectId
     const existingDoc = await collection.findOne({ _id: roundId });
     if (existingDoc) {
       console.log(`[Process-Round] SKIPPING: Embedding for ${roundId} already exists.`);
@@ -100,8 +96,7 @@ export async function POST(request: Request) {
     const [gameId, roundIndexStr] = roundId.split('_');
     const roundIndex = parseInt(roundIndexStr, 10) - 1;
 
-    // Use unknown first to suppress eslint error for explicit any, assuming _id is string
-    const duel = await duelsCollection.findOne({ _id: gameId } as unknown as import('mongodb').Filter<import('mongodb').Document>);
+    const duel = await duelsCollection.findOne({ _id: gameId });
 
     if (!duel || !duel.rounds || !duel.rounds[roundIndex]) {
       throw new Error(`Could not find duel data for round ${roundId}`);
@@ -117,8 +112,6 @@ export async function POST(request: Request) {
     const imageBuffer = await fetchStreetViewImage(round.panorama.lat, round.panorama.lng, round.panorama.heading, round.panorama.pitch ?? 0, round.panorama.zoom ?? 0);
     const embedding = await generateEmbedding(imageBuffer);
 
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-expect-error - _id type mismatch with mongo, strictly string here
     await collection.insertOne({ _id: roundId, embedding: embedding });
 
     console.log(`[Process-Round] Successfully processed and saved embedding for ${roundId}.`);
