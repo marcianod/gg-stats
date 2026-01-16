@@ -30,13 +30,15 @@ export async function POST(request: Request) {
     const collection = await getDuelsCollection();
 
     // Find existing duels by ID
-    const existingDocs = await collection.find({ _id: { $in: gameIds } }, { projection: { _id: 1 } }).toArray();
-    const existingDuelIds = new Set(existingDocs.map(d => d._id));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const existingDocs = await collection.find({ _id: { $in: gameIds } } as any, { projection: { _id: 1 } }).toArray();
+    const existingDuelIds = new Set(existingDocs.map(d => String(d._id)));
 
     // 3. Filter to get only the new duels
     const newDuels = duels.filter(duel => !existingDuelIds.has(duel.gameId));
 
     let newRoundIds: string[] = [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const bulkOps: any[] = [];
 
     if (newDuels.length > 0) {
@@ -45,6 +47,7 @@ export async function POST(request: Request) {
         if (duel.gameId) {
           // Remove the temporary 'created' field before saving if needed, though Mongo handles it fine
           // We'll keep consistent behavior with previous impl
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { created: _created, ...duelToSave } = duel;
 
           bulkOps.push({
@@ -73,12 +76,14 @@ export async function POST(request: Request) {
     // 5. Always update the timestamp to the latest game seen in the batch
     if (latestTimestamp > 0) {
       const configCollection = await getConfigCollection();
-      const currentDoc = await configCollection.findOne({ _id: 'lastSyncTimestamp' });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const currentDoc = await configCollection.findOne({ _id: 'lastSyncTimestamp' } as any);
       const currentLastSync = currentDoc?.value || 0;
 
       if (latestTimestamp > currentLastSync) {
         await configCollection.updateOne(
-          { _id: 'lastSyncTimestamp' },
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          { _id: 'lastSyncTimestamp' } as any,
           { $set: { value: latestTimestamp } },
           { upsert: true }
         );

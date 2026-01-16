@@ -32,17 +32,20 @@ export async function getDb(): Promise<Db> {
     return cachedDb;
 }
 
-export async function getDuelsCollection(): Promise<Collection<any>> {
+// Basic Document type for generic collections if no specifc type is needed
+import { Document } from 'mongodb';
+
+export async function getDuelsCollection(): Promise<Collection<Document>> {
     const db = await getDb();
     return db.collection(COLLECTION_NAME);
 }
 
-export async function getConfigCollection(): Promise<Collection<any>> {
+export async function getConfigCollection(): Promise<Collection<Document>> {
     const db = await getDb();
     return db.collection(CONFIG_COLLECTION_NAME);
 }
 
-export async function getEmbeddingsCollection(): Promise<Collection<any>> {
+export async function getEmbeddingsCollection(): Promise<Collection<Document>> {
     const db = await getDb();
     return db.collection(EMBEDDINGS_COLLECTION);
 }

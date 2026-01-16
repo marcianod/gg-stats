@@ -90,6 +90,7 @@ export async function POST(request: Request) {
     const collection = await getEmbeddingsCollection();
     const duelsCollection = await getDuelsCollection();
 
+    // @ts-expect-error - _id is a string in our schema but Mongo types expect ObjectId
     const existingDoc = await collection.findOne({ _id: roundId });
     if (existingDoc) {
       console.log(`[Process-Round] SKIPPING: Embedding for ${roundId} already exists.`);
@@ -99,7 +100,8 @@ export async function POST(request: Request) {
     const [gameId, roundIndexStr] = roundId.split('_');
     const roundIndex = parseInt(roundIndexStr, 10) - 1;
 
-    const duel = await duelsCollection.findOne({ _id: gameId } as any);
+    // Use unknown first to suppress eslint error for explicit any, assuming _id is string
+    const duel = await duelsCollection.findOne({ _id: gameId } as unknown as import('mongodb').Filter<import('mongodb').Document>);
 
     if (!duel || !duel.rounds || !duel.rounds[roundIndex]) {
       throw new Error(`Could not find duel data for round ${roundId}`);
@@ -115,7 +117,8 @@ export async function POST(request: Request) {
     const imageBuffer = await fetchStreetViewImage(round.panorama.lat, round.panorama.lng, round.panorama.heading, round.panorama.pitch ?? 0, round.panorama.zoom ?? 0);
     const embedding = await generateEmbedding(imageBuffer);
 
-    // @ts-ignore
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-expect-error - _id type mismatch with mongo, strictly string here
     await collection.insertOne({ _id: roundId, embedding: embedding });
 
     console.log(`[Process-Round] Successfully processed and saved embedding for ${roundId}.`);

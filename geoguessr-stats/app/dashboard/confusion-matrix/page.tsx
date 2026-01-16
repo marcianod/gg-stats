@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import { type Duel, type ProcessedDuel, type RoundData, type GeoJson, type CountryData } from '@/lib/types';
+import { type Duel, type RoundData, type GeoJson, type CountryData } from '@/lib/types';
 import { ConfusionMatrix } from '@/components/ConfusionMatrix';
 import { type MapProps } from '@/components/Map';
 import { DateRangePopover } from '@/components/ui/date-range-popover';
