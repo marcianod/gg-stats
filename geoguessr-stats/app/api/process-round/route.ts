@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { kv } from '@vercel/kv';
+import { kv } from '@/lib/kv';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Duel, Round } from '@/lib/types';
 import { PredictionServiceClient, helpers } from '@google-cloud/aiplatform';
@@ -11,8 +11,8 @@ const DB_NAME = 'gg-vector-db';
 const COLLECTION_NAME = 'gg-vector-db-collection';
 // --- Type Definitions ---
 interface EmbeddingDocument {
-    _id: string;
-    embedding: number[];
+  _id: string;
+  embedding: number[];
 }
 
 // --- Google Cloud AI Platform Client ---

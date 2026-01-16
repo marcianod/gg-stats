@@ -3,7 +3,7 @@ import path from 'path';
 import { Duel } from '../lib/types';
 import dotenv from 'dotenv';
 import { PredictionServiceClient, helpers } from '@google-cloud/aiplatform';
-import { kv } from '@vercel/kv';
+import { kv } from '../lib/kv.ts';
 
 // Load environment variables from .env.local
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
@@ -34,7 +34,7 @@ async function fetchStreetViewImage(lat: number, lng: number, heading: number, p
   }
   const fov = getFov(zoom);
   const url = `https://maps.googleapis.com/maps/api/streetview?size=640x640&location=${lat},${lng}&fov=${fov}&heading=${heading}&pitch=${pitch}&key=${GOOGLE_API_KEY}`;
-  
+
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`Failed to fetch Street View image: ${response.statusText}`);
@@ -72,7 +72,7 @@ async function generateEmbedding(imageBuffer: Buffer): Promise<number[]> {
   };
 
   const [response] = await predictionServiceClient.predict(request);
-  
+
   if (!response.predictions || response.predictions.length === 0) {
     throw new Error('Failed to get a prediction from the Vertex AI API.');
   }
@@ -115,7 +115,7 @@ async function main() {
           if (existingEmbedding) {
             continue;
           }
-          
+
           if (!round.panorama || typeof round.panorama.heading === 'undefined' || typeof round.panorama.lat === 'undefined' || typeof round.panorama.lng === 'undefined') {
             console.warn(`Skipping round ${roundId} due to missing panorama data.`);
             continue;

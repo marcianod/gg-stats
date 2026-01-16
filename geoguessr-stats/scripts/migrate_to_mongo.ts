@@ -1,5 +1,5 @@
 import { MongoClient } from 'mongodb';
-import { kv } from '@vercel/kv';
+import { kv } from '../lib/kv.ts';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -16,8 +16,8 @@ const DB_NAME = 'gg-vector-db';
 const COLLECTION_NAME = 'gg-vector-db-collection';
 
 interface EmbeddingDocument {
-    _id: string;
-    embedding: number[];
+  _id: string;
+  embedding: number[];
 }
 // --- End Configuration ---
 
@@ -44,7 +44,7 @@ async function migrate() {
       console.log('No matching keys found in Vercel KV. Exiting.');
       return;
     }
-    
+
     console.log(`Found ${embeddingKeys.length} keys. Migrating to MongoDB...`);
 
     const batchSize = 100;

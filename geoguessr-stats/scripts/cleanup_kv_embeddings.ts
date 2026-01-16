@@ -1,4 +1,4 @@
-import { kv } from '@vercel/kv';
+import { kv } from '../lib/kv.ts';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -24,12 +24,12 @@ async function cleanup() {
       console.log('No matching keys found to delete. Exiting.');
       return;
     }
-    
+
     console.log(`Found ${keysToDelete.length} keys to delete. Proceeding in batches...`);
 
     for (let i = 0; i < keysToDelete.length; i += BATCH_SIZE) {
       const keyBatch = keysToDelete.slice(i, i + BATCH_SIZE);
-      
+
       if (keyBatch.length > 0) {
         await kv.del(...keyBatch);
         console.log(`Deleted batch ${Math.floor(i / BATCH_SIZE) + 1} of ${Math.ceil(keysToDelete.length / BATCH_SIZE)}`);

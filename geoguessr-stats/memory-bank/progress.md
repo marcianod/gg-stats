@@ -108,3 +108,11 @@
 *   [x] Enhanced the 'Escape' key to clear all pinned windows.
 *   [x] Added debugging logs to trace click events and confirmed the fix.
 *   [x] Cleaned up debugging logs from the map component.
+
+### Userscript Sync and Rate-Limiting Fixes
+
+*   [x] Enhanced the `process-round` API to return detailed reasons for skipped rounds.
+*   [x] Updated the userscript to display a detailed, collapsible log of sync activity.
+*   [x] Implemented a retry mechanism with exponential backoff to handle GeoGuessr API rate-limiting.
+*   [x] Corrected a major bug causing an infinite loop by switching from page-based to token-based pagination.
+*   [x] Optimized duel detail fetching to use parallel batches, significantly improving sync speed.

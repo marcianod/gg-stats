@@ -2,15 +2,20 @@
 
 ## Current Focus
 
-Awaiting next task. The previous focus was on improving the user experience of the "Vibe" page map, which is now complete.
+Awaiting next task. The previous focus was on debugging and fixing the userscript's sync functionality.
 
 ## Completed Problem Details
 
--   **Vibe Page Map Interaction:** The middle-click functionality to pin Street View windows was not working reliably. The right-click and Escape key behaviors also needed refinement.
+-   **Userscript Sync Failures:** The userscript was failing due to a combination of GeoGuessr API changes and aggressive request patterns.
+-   **Symptoms:**
+    -   Rate-limiting errors (HTTP 429).
+    -   An infinite loop causing the script to repeatedly fetch the first page of the activity feed.
+    -   Slow performance due to inefficient fetching of duel details.
 -   **Solution:**
-    -   Re-implemented the pin action to use the `mousedown` event on each marker, checking for the middle mouse button. This proved more reliable than `auxclick`.
-    -   Re-purposed the right-click on a marker to clear the active selection.
-    -   Enhanced the 'Escape' key to clear all pinned windows in addition to the active selection.
+    -   **Switched to Token-Based Pagination:** Refactored the script to use the new `paginationToken` provided by the GeoGuessr API, fixing the infinite loop.
+    -   **Implemented Batched Parallel Requests:** Optimized the fetching of duel details to use small, parallel batches with a delay, balancing speed and reliability.
+    -   **Added Exponential Backoff:** Implemented a retry mechanism to gracefully handle any future rate-limiting errors.
+    -   **Enhanced Logging:** Improved the sync summary to provide a detailed, collapsible log of which rounds were processed or skipped, and why.
 
 ## Next Steps
 

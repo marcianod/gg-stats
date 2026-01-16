@@ -11,7 +11,7 @@
 // @require      https://cdn.jsdelivr.net/npm/sweetalert2@11
 // ==/UserScript==
 
-(function() {
+(function () {
     'use strict';
 
     // --- Configuration ---
@@ -21,13 +21,22 @@
     const lastSyncApiUrl = `${baseUrl}/api/last-sync`;
     const MAX_PAGES_TO_FETCH = 200;
     const DUEL_FETCH_BATCH_SIZE = 25; // Match the feed size
-    const DUEL_FETCH_DELAY_MS = 2500;
-    const DUEL_DETAILS_FETCH_DELAY_MS = 300;
+    const DUEL_FETCH_DELAY_MS = 1500; // Delay between pages of the feed
+    const DUEL_DETAILS_BATCH_SIZE = 5; // How many duel details to fetch in parallel
+    const DUEL_DETAILS_BATCH_DELAY_MS = 500; // Delay between batches of duel details
+
+    function chunk(arr, size) {
+        return Array.from({ length: Math.ceil(arr.length / size) }, (v, i) =>
+            arr.slice(i * size, i * size + size)
+        );
+    }
 
     function addSyncButton() {
-        const actionsContainer = document.querySelector('[class^="profile-header_actions__"]');
+        // Find the new button container
+        const actionsContainer = document.querySelector('[class^="profile-v2_buttons__"]');
         if (!actionsContainer || document.getElementById('stats-sync-button')) return;
 
+        // Add the SweetAlert2 styling
         const style = document.createElement('style');
         style.innerHTML = `
             .swal2-deny.swal2-styled.swal2-styled { background-color: #4a5568 !important; }
@@ -37,12 +46,20 @@
 
         const syncButton = document.createElement('button');
         syncButton.id = 'stats-sync-button';
-        syncButton.className = 'button_button__CnARx button_variant-primary__f_x5x';
-        syncButton.innerHTML = '<span>Sync Duel Stats</span>';
-        syncButton.style.marginLeft = '1rem';
+
+        // Use the new button classes found in the HTML
+        syncButton.className = 'button_button__aR6_e button_variantDimmed__CdXZM button_sizeSmall__MB_qj';
+
+        // Use the new inner HTML structure for the button to match the others
+        syncButton.innerHTML = '<div class="button_wrapper__zayJ3"><span class="button_label__ERkjz">Sync Duel Stats</span></div>';
+
+        // Use a small margin to space it from the other buttons
+        syncButton.style.marginLeft = '0.5rem';
+
         syncButton.onclick = syncAllDuelStats;
         actionsContainer.appendChild(syncButton);
     }
+
 
     async function syncAllDuelStats() {
         if (typeof Swal === 'undefined') return alert('Sync library is not ready. Please try again.');
@@ -141,18 +158,26 @@
                 Swal.update({ text: 'Force Full Resync initiated. Fetching all available history.' });
             }
 
-            let page = 0;
             let keepFetching = true;
             const allDuelsToSend = [];
+            let paginationToken = null;
+            let pageCount = 0;
 
-            while (keepFetching && page < MAX_PAGES_TO_FETCH) {
+            while (keepFetching && pageCount < MAX_PAGES_TO_FETCH) {
                 let feedResponse;
                 let attempts = 0;
                 const maxAttempts = 4;
 
+                const url = new URL('https://www.geoguessr.com/api/v4/feed/private/');
+                url.searchParams.set('count', DUEL_FETCH_BATCH_SIZE);
+                if (paginationToken) {
+                    url.searchParams.set('paginationToken', paginationToken);
+                }
+
                 while (attempts < maxAttempts) {
                     attempts++;
-                    feedResponse = await fetch(`https://www.geoguessr.com/api/v4/feed/private?count=${DUEL_FETCH_BATCH_SIZE}&page=${page}`, { credentials: 'include' });
+                    Swal.update({ text: `Fetching page ${pageCount}...` });
+                    feedResponse = await fetch(url.toString(), { credentials: 'include' });
 
                     if (feedResponse.ok) {
                         break; // Success, exit the retry loop
@@ -163,14 +188,14 @@
                         Swal.update({ text: `Rate limited. Retrying in ${delay / 1000} seconds... (Attempt ${attempts}/${maxAttempts - 1})` });
                         await sleep(delay);
                     } else {
-                        // For non-429 errors or if max attempts are reached
-                        throw new Error(`Failed to fetch activity feed (page ${page}) after ${attempts} attempt(s). Status: ${feedResponse.status}`);
+                        throw new Error(`Failed to fetch activity feed (page ${pageCount}) after ${attempts} attempt(s). Status: ${feedResponse.status}`);
                     }
                 }
 
                 const feed = await feedResponse.json();
+                paginationToken = feed.paginationToken;
                 if (feed.entries.length === 0) {
-                    console.log(`Found an empty page (${page}). Stopping search.`);
+                    console.log(`Found an empty page (${pageCount}). Stopping search.`);
                     break;
                 }
 
@@ -185,49 +210,55 @@
                     }
                 }).filter((id, index, self) => self.indexOf(id) === index); // Unique IDs
 
-                if (gameIds.length === 0) {
-                    page++;
-                    continue;
-                }
+                if (gameIds.length > 0) {
+                    Swal.update({ text: `Scanning Page ${pageCount}: Found ${gameIds.length} duels. Fetching details...` });
 
-                Swal.update({ text: `Scanning Page ${page}: Found ${gameIds.length} duels. Fetching details...` });
+                    const gameIdChunks = chunk(gameIds, DUEL_DETAILS_BATCH_SIZE);
+                    const duelDetails = [];
 
-                const duelDetails = [];
-                for (let i = 0; i < gameIds.length; i++) {
-                    const id = gameIds[i];
-                    Swal.update({ text: `Fetching duel ${i + 1} of ${gameIds.length} on page ${page}...` });
-                    const res = await fetch(`https://game-server.geoguessr.com/api/duels/${id}`, { credentials: 'include' });
-                    if (res.ok) {
-                        const duel = await res.json();
-                        duelDetails.push(duel);
-                    }
-                    await sleep(DUEL_DETAILS_FETCH_DELAY_MS);
-                }
+                    for (let i = 0; i < gameIdChunks.length; i++) {
+                        const chunk = gameIdChunks[i];
+                        Swal.update({ text: `Fetching duel batch ${i + 1} of ${gameIdChunks.length} on page ${pageCount}...` });
 
-                if (duelDetails.length > 0) {
-                    const lastDuelInBatch = duelDetails[duelDetails.length - 1];
-                    const lastDuelTimestamp = new Date(lastDuelInBatch.teams[0]?.players[0]?.guesses[0]?.created).getTime();
-                    if (!isNaN(lastDuelTimestamp)) {
-                         Swal.update({ text: `Scanning Page ${page} (Games from ~${new Date(lastDuelTimestamp).toLocaleDateString()})...` });
-                    }
+                        const duelPromises = chunk.map(id =>
+                            fetch(`https://game-server.geoguessr.com/api/duels/${id}`, { credentials: 'include' })
+                                .then(res => res.ok ? res.json() : null)
+                        );
 
-                    for (const duel of duelDetails) {
-                        const duelTimestamp = new Date(duel.teams[0]?.players[0]?.guesses[0]?.created).getTime();
-                        if (isNaN(duelTimestamp)) continue;
+                        const chunkDetails = (await Promise.all(duelPromises)).filter(Boolean);
+                        duelDetails.push(...chunkDetails);
 
-                        if (duelTimestamp <= syncThreshold && options.mode !== 'full') {
-                            keepFetching = false;
-                            break;
+                        if (i < gameIdChunks.length - 1) {
+                            await sleep(DUEL_DETAILS_BATCH_DELAY_MS);
                         }
-                        // Attach the correct timestamp for the server
-                        duel.created = new Date(duelTimestamp).toISOString();
-                        allDuelsToSend.push(duel);
+                    }
+
+                    if (duelDetails.length > 0) {
+                        const lastDuelInBatch = duelDetails[duelDetails.length - 1];
+                        const lastDuelTimestamp = new Date(lastDuelInBatch.teams[0]?.players[0]?.guesses[0]?.created).getTime();
+                        if (!isNaN(lastDuelTimestamp)) {
+                            Swal.update({ text: `Scanning Page ${pageCount} (Games from ~${new Date(lastDuelTimestamp).toLocaleDateString()})...` });
+                        }
+
+                        for (const duel of duelDetails) {
+                            const duelTimestamp = new Date(duel.teams[0]?.players[0]?.guesses[0]?.created).getTime();
+                            if (isNaN(duelTimestamp)) continue;
+
+                            if (duelTimestamp <= syncThreshold && options.mode !== 'full') {
+                                keepFetching = false;
+                                break;
+                            }
+                            duel.created = new Date(duelTimestamp).toISOString();
+                            allDuelsToSend.push(duel);
+                        }
                     }
                 }
-                
-                if (keepFetching) {
-                    page++;
+
+                pageCount++;
+                if (keepFetching && paginationToken) {
                     await sleep(DUEL_FETCH_DELAY_MS);
+                } else {
+                    keepFetching = false;
                 }
             }
 
@@ -362,7 +393,7 @@
     }
 
     const observer = new MutationObserver(() => {
-        if (document.querySelector('[class^="profile-header_actions__"]')) {
+        if (document.querySelector('[class^="profile-v2_buttons__"]')) {
             addSyncButton();
         }
     });

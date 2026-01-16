@@ -1,4 +1,4 @@
-import { kv } from '@vercel/kv';
+import { kv } from '@/lib/kv';
 import { NextResponse } from 'next/server';
 import { type Duel, type Round } from '@/lib/types';
 
@@ -49,23 +49,23 @@ export async function POST(request: Request) {
       // Get all round IDs from the new duels, respecting the actual number of rounds played
       newRoundIds = newDuels.flatMap(duel => {
         const roundsPlayed = (duel.currentRoundNumber as number) || 0;
-        return duel.rounds 
-          ? duel.rounds.slice(0, roundsPlayed).map((round: Round) => `${duel.gameId}_${round.roundNumber}`) 
+        return duel.rounds
+          ? duel.rounds.slice(0, roundsPlayed).map((round: Round) => `${duel.gameId}_${round.roundNumber}`)
           : [];
       });
     }
 
     // 5. Always update the timestamp to the latest game seen in the batch
     if (latestTimestamp > 0) {
-        const currentLastSync = await kv.get<number>('lastSyncTimestamp') || 0;
-        if (latestTimestamp > currentLastSync) {
-            pipeline.set('lastSyncTimestamp', latestTimestamp);
-            pipelineHasCommands = true;
-        }
+      const currentLastSync = await kv.get<number>('lastSyncTimestamp') || 0;
+      if (latestTimestamp > currentLastSync) {
+        pipeline.set('lastSyncTimestamp', latestTimestamp);
+        pipelineHasCommands = true;
+      }
     }
 
     if (pipelineHasCommands) {
-        await pipeline.exec();
+      await pipeline.exec();
     }
 
     return NextResponse.json({
